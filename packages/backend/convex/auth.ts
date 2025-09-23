@@ -9,6 +9,9 @@ import { betterAuth } from "better-auth";
 const siteUrl = process.env.AUTH_SITE_URL!;
 const TRUSTED_ORIGIN_MOBILE = process.env.TRUSTED_ORIGIN_MOBILE!;
 
+// 开发环境用于存储最新的重置token
+let latestResetToken: string | null = null;
+
 
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
@@ -21,21 +24,42 @@ export const createAuth = (
 			disabled: optionsOnly,
 		},
 		baseURL: siteUrl,
-		trustedOrigins: [siteUrl, TRUSTED_ORIGIN_MOBILE],
+		trustedOrigins: [siteUrl, TRUSTED_ORIGIN_MOBILE, "willchat://"],
 		database: authComponent.adapter(ctx),
 		emailAndPassword: {
 			enabled: true,
 			requireEmailVerification: false,
 			sendResetPassword: async ({ user, url, token }, request) => {
-				console.log("===>",user,url, token)
-				// 发送邮件给用户
+				console.log("📧 发送密码重置邮件:");
+				console.log("收件人:", user.email);
+				console.log("重置链接:", url);
+				console.log("重置令牌:", token);
+				
+				// 在开发环境中存储token供客户端测试使用
+				latestResetToken = token;
+				console.log("💾 已存储token供开发测试:", token);
+				
+				// 在开发环境中，我们可以在控制台打印重置链接
+				// 这样开发者可以直接复制链接进行测试
+				console.log("\n=== 🔗 密码重置深度链接 ===");
+				console.log("请复制以下链接在模拟器中测试:");
+				console.log(`xcrun simctl openurl booted "${url}"`);
+				console.log("或在Android模拟器中使用:");
+				console.log(`adb shell am start -W -a android.intent.action.VIEW -d "${url}"`);
+				console.log("==========================\n");
+				
+				// TODO: 在生产环境中，这里应该调用真实的邮件发送服务
+				// 例如：Resend, SendGrid, Nodemailer等
 				// await sendEmail({
 				//   to: user.email,
-				//   subject: "Reset your password",
-				//   text: `Click the link to reset your password: ${url}`,
+				//   subject: "重置您的密码",
+				//   html: `<p>点击以下链接重置密码：</p><a href="${url}">重置密码</a>`,
 				// });
+				
+				// 模拟邮件发送成功
+				return Promise.resolve();
 			},
-			onPasswordReset: async ({ user }, request) => {
+			onPasswordReset: async ({ user }) => {
 				// your logic here
 				console.log(`Password for user ${user.email} has been reset.`);
 			},
@@ -48,5 +72,17 @@ export const getCurrentUser = query({
 	args: {},
 	handler: async (ctx) => {
 		return authComponent.getAuthUser(ctx);
+	},
+});
+
+// 开发环境专用：获取最新的重置token
+export const getLatestResetToken = query({
+	args: {},
+	handler: async () => {
+		// 仅在开发环境中返回token
+		if (process.env.NODE_ENV === "production") {
+			throw new Error("此功能仅在开发环境中可用");
+		}
+		return { token: latestResetToken };
 	},
 });

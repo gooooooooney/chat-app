@@ -82,7 +82,7 @@ export default function SetPasswordScreen() {
 
 		setLoading(true);
 		try {
-			const { data, error } = await authClient.resetPassword({
+			const { error } = await authClient.resetPassword({
 				newPassword,
 				token: currentToken,
 			});

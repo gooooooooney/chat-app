@@ -17,6 +17,7 @@ import { setAndroidNavigationBar } from "@/lib/android-navigation-bar";
 import { Slot } from "expo-router";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { authClient } from "@/lib/auth-client";
+import { DeepLinkHandler } from "../components/deep-link-handler";
 
 const LIGHT_THEME: Theme = {
 	...DefaultTheme,
@@ -62,6 +63,7 @@ export default function RootLayout() {
 			<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
 				<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
 				<GestureHandlerRootView style={{ flex: 1 }}>
+					<DeepLinkHandler />
 					{/* <Stack>
 						<Stack.Screen name="(drawer)" options={{ headerShown: false }} />
 						<Stack.Screen

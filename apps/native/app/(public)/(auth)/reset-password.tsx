@@ -13,11 +13,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
 import { Input } from "../../../components/input";
 import { authClient } from "../../../lib/auth-client";
+import { api } from "@convex-dev/better-auth/react";
+import { useQuery } from "convex/react";
 
 export default function ResetPasswordScreen() {
 	const [email, setEmail] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [emailSent, setEmailSent] = useState(false);
+	
+	// 开发环境专用：获取最新的重置token
+	const tokenQuery = useQuery(api.auth.getLatestResetToken);
 
 	const handleRequestReset = async () => {
 		if (!email) {
@@ -33,7 +38,7 @@ export default function ResetPasswordScreen() {
 
 		setLoading(true);
 		try {
-			const { data, error } = await authClient.requestPasswordReset({
+			const { error } = await authClient.requestPasswordReset({
 				email,
 				redirectTo: `willchat://set-password`, // 使用深度链接跳转到应用内的设置密码页面
 			});
@@ -55,6 +60,15 @@ export default function ResetPasswordScreen() {
 	const handleResendEmail = async () => {
 		setEmailSent(false);
 		await handleRequestReset();
+	};
+
+	// 开发环境专用：直接使用token跳转到设置密码页面
+	const handleDevModeJump = () => {
+		if (tokenQuery?.token) {
+			router.push(`/set-password?token=${encodeURIComponent(tokenQuery.token)}`);
+		} else {
+			Alert.alert("开发提示", "请先发送重置邮件以生成token");
+		}
 	};
 
 	// 邮件发送成功页面
@@ -114,6 +128,21 @@ export default function ResetPasswordScreen() {
 										{loading ? "发送中..." : "重新发送邮件"}
 									</Text>
 								</TouchableOpacity>
+
+								{/* 开发模式：直接跳转按钮 */}
+								{__DEV__ && (
+									<TouchableOpacity
+										onPress={handleDevModeJump}
+										className="w-full py-3 rounded-lg border border-orange-300 bg-orange-50"
+										accessibilityLabel="开发模式：直接跳转"
+										accessibilityRole="button"
+									>
+										<Text className="text-orange-600 text-center text-sm font-medium">
+											🚀 开发模式：使用Token直接跳转
+											{tokenQuery?.token ? " ✅" : " (无可用Token)"}
+										</Text>
+									</TouchableOpacity>
+								)}
 
 								<TouchableOpacity
 									onPress={() => router.push("/sign-in")}
@@ -196,6 +225,21 @@ export default function ResetPasswordScreen() {
 								{loading ? "发送中..." : "发送重置邮件"}
 							</Text>
 						</TouchableOpacity>
+
+						{/* 开发模式：直接跳转按钮 */}
+						{__DEV__ && (
+							<TouchableOpacity
+								onPress={handleDevModeJump}
+								className="w-full py-3 rounded-lg border border-orange-300 bg-orange-50 mb-4"
+								accessibilityLabel="开发模式：直接跳转"
+								accessibilityRole="button"
+							>
+								<Text className="text-orange-600 text-center text-sm font-medium">
+									🚀 开发模式：使用Token直接跳转
+									{tokenQuery?.token ? " ✅" : " (需要先发送邮件)"}
+								</Text>
+							</TouchableOpacity>
+						)}
 
 						{/* Back to Sign In */}
 						<View className="flex-row justify-center items-center">

@@ -14,6 +14,9 @@ import React, { useRef } from "react";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { Platform } from "react-native";
 import { setAndroidNavigationBar } from "@/lib/android-navigation-bar";
+import { Slot } from "expo-router";
+import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
+import { authClient } from "@/lib/auth-client";
 
 const LIGHT_THEME: Theme = {
 	...DefaultTheme,
@@ -29,6 +32,7 @@ export const unstable_settings = {
 };
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
+	expectAuth: true,
 	unsavedChangesWarning: false,
 });
 
@@ -54,20 +58,23 @@ export default function RootLayout() {
 		return null;
 	}
 	return (
-		<ConvexProvider client={convex}>
+		<ConvexBetterAuthProvider client={convex} authClient={authClient}>
 			<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
 				<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
 				<GestureHandlerRootView style={{ flex: 1 }}>
-					<Stack>
+					{/* <Stack>
 						<Stack.Screen name="(drawer)" options={{ headerShown: false }} />
 						<Stack.Screen
 							name="modal"
 							options={{ title: "Modal", presentation: "modal" }}
 						/>
-					</Stack>
+					</Stack> */}
+
+					<Slot />
+
 				</GestureHandlerRootView>
 			</ThemeProvider>
-		</ConvexProvider>
+		</ConvexBetterAuthProvider>
 	);
 }
 

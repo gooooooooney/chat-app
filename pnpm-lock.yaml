@@ -23,6 +23,9 @@ importers:
       '@expo/vector-icons':
         specifier: ^15.0.2
         version: 15.0.2(expo-font@14.0.8(expo@54.0.10)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
+      '@legendapp/list':
+        specifier: ^2.0.6
+        version: 2.0.6(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
       '@react-navigation/bottom-tabs':
         specifier: ^7.2.0
         version: 7.4.7(@react-navigation/native@7.1.17(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0))(react-native-safe-area-context@5.6.1(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0))(react-native-screens@4.16.0(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
@@ -32,6 +35,9 @@ importers:
       '@react-navigation/native':
         specifier: ^7.0.14
         version: 7.1.17(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
+      '@rn-primitives/avatar':
+        specifier: ^1.2.0
+        version: 1.2.0(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
       '@rn-primitives/portal':
         specifier: ^1.3.0
         version: 1.3.0(@types/react@19.1.13)(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
@@ -1278,6 +1284,12 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
+  '@legendapp/list@2.0.6':
+    resolution: {integrity: sha512-HDKKEnYrhCF7kCcXbiop0bKDZzr59oVbCTkjW99mo2cMl26LJCYHDq9UTwDuW0MaeXWapLyN8A2/luGU0+L33g==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+
   '@levischuck/tiny-cbor@0.2.11':
     resolution: {integrity: sha512-llBRm4dT4Z89aRsm6u2oEZ8tfwL/2l6BwpZ7JcyieouniDECM5AqNgr/y08zalEIvW3RSK4upYyybDcmjXqAow==}
 
@@ -2214,8 +2226,56 @@ packages:
   '@react-navigation/routers@7.5.1':
     resolution: {integrity: sha512-pxipMW/iEBSUrjxz2cDD7fNwkqR4xoi0E/PcfTQGCcdJwLoaxzab5kSadBLj1MTJyT0YRrOXL9umHpXtp+Dv4w==}
 
+  '@rn-primitives/avatar@1.2.0':
+    resolution: {integrity: sha512-ic029KaJRADdjmjPzpaSaZ9QrtgGF8DnAA7TcQ/gYqUfLXjkbfzsjARKv7NtEoJLjWAcjIAK6R8JkcbMfPtYig==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+      react-native-web: '*'
+    peerDependenciesMeta:
+      react-native:
+        optional: true
+      react-native-web:
+        optional: true
+
+  '@rn-primitives/hooks@1.3.0':
+    resolution: {integrity: sha512-BR97reSu7uVDpyMeQdRJHT0w8KdS6jdYnOL6xQtqS2q3H6N7vXBlX4LFERqJZphD+aziJFIAJ3HJF1vtt6XlpQ==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+      react-native-web: '*'
+    peerDependenciesMeta:
+      react-native:
+        optional: true
+      react-native-web:
+        optional: true
+
   '@rn-primitives/portal@1.3.0':
     resolution: {integrity: sha512-a2DSce7TcSfcs0cCngLadAJOvx/+mdH9NRu+GxkX8NPRsGGhJvDEOqouMgDqLwx7z9mjXoUaZcwaVcemUSW9/A==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+      react-native-web: '*'
+    peerDependenciesMeta:
+      react-native:
+        optional: true
+      react-native-web:
+        optional: true
+
+  '@rn-primitives/slot@1.2.0':
+    resolution: {integrity: sha512-cpbn+JLjSeq3wcA4uqgFsUimMrWYWx2Ks7r5rkwd1ds1utxynsGkLOKpYVQkATwWrYhtcoF1raxIKEqXuMN+/w==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+      react-native-web: '*'
+    peerDependenciesMeta:
+      react-native:
+        optional: true
+      react-native-web:
+        optional: true
+
+  '@rn-primitives/types@1.2.0':
+    resolution: {integrity: sha512-b+6zKgdKVqAfaFPSfhwlQL0dnPQXPpW890m3eguC0VDI1eOsoEvUfVb6lmgH4bum9MmI0xymq4tOUI/fsKLoCQ==}
     peerDependencies:
       react: '*'
       react-native: '*'
@@ -6420,6 +6480,12 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@legendapp/list@2.0.6(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      react: 19.1.0
+      react-native: 0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0)
+      use-sync-external-store: 1.5.0(react@19.1.0)
+
   '@levischuck/tiny-cbor@0.2.11': {}
 
   '@next/env@15.5.0': {}
@@ -7513,6 +7579,24 @@ snapshots:
     dependencies:
       nanoid: 3.3.11
 
+  '@rn-primitives/avatar@1.2.0(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@rn-primitives/hooks': 1.3.0(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
+      '@rn-primitives/slot': 1.2.0(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
+      '@rn-primitives/types': 1.2.0(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
+      react: 19.1.0
+    optionalDependencies:
+      react-native: 0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0)
+      react-native-web: 0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+
+  '@rn-primitives/hooks@1.3.0(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@rn-primitives/types': 1.2.0(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
+      react: 19.1.0
+    optionalDependencies:
+      react-native: 0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0)
+      react-native-web: 0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+
   '@rn-primitives/portal@1.3.0(@types/react@19.1.13)(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))':
     dependencies:
       react: 19.1.0
@@ -7524,6 +7608,20 @@ snapshots:
       - '@types/react'
       - immer
       - use-sync-external-store
+
+  '@rn-primitives/slot@1.2.0(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      react: 19.1.0
+    optionalDependencies:
+      react-native: 0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0)
+      react-native-web: 0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+
+  '@rn-primitives/types@1.2.0(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      react: 19.1.0
+    optionalDependencies:
+      react-native: 0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0)
+      react-native-web: 0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
 
   '@simplewebauthn/browser@13.2.0': {}
 

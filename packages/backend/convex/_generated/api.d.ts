@@ -9,10 +9,13 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as chat from "../chat.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
 import type * as privateData from "../privateData.js";
 import type * as todos from "../todos.js";
+import type * as types from "../types.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -30,10 +33,13 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  chat: typeof chat;
   healthCheck: typeof healthCheck;
   http: typeof http;
   privateData: typeof privateData;
   todos: typeof todos;
+  types: typeof types;
+  users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 

@@ -8,7 +8,7 @@ import {
     Unauthenticated,
     AuthLoading,
     useQuery,
-  } from "convex/react";
+} from "convex/react";
 
 const Page = () => {
     const { data: session, isPending } = authClient.useSession();
@@ -24,7 +24,7 @@ const Page = () => {
 
     // 身份验证状态已确认，根据登录状态重定向
     return session?.session ? (
-        <Redirect href="/(authenticated)/(drawer)" />
+        <Redirect href="/(authenticated)/(tabs)" />
     ) : (
         <Redirect href="/sign-in" />
     );

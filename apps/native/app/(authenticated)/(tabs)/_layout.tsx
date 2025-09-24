@@ -1,6 +1,8 @@
 import { TabBarIcon } from "@/components/tabbar-icon";
+import { Icon } from "@/components/ui/icon";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { Tabs } from "expo-router";
+import { MessageCircleIcon, UserRound, UsersRoundIcon } from "lucide-react-native";
 
 export default function TabLayout() {
 	const { isDarkColorScheme } = useColorScheme();
@@ -28,16 +30,25 @@ export default function TabLayout() {
 			<Tabs.Screen
 				name="index"
 				options={{
-					title: "Home",
-					tabBarIcon: ({ color }) => <TabBarIcon name="wechat" color={color} />,
+					title: "聊天",
+					tabBarIcon: ({ color }) => <Icon as={MessageCircleIcon} color={color} />,
 				}}
 			/>
 			<Tabs.Screen
-				name="two"
+				name="contacts"
 				options={{
-					title: "Explore",
+					title: "通讯录",
 					tabBarIcon: ({ color }) => (
-						<TabBarIcon name="compass" color={color} />
+						<Icon as={UsersRoundIcon} color={color} />
+					),
+				}}
+			/>
+			<Tabs.Screen
+				name="mine"
+				options={{
+					title: "我的",
+					tabBarIcon: ({ color }) => (
+						<Icon as={UserRound} color={color} />
 					),
 				}}
 			/>

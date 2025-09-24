@@ -1,5 +1,5 @@
 import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { Stack } from "expo-router";
+import { PortalHost } from "@rn-primitives/portal";
 import {
 	DarkTheme,
 	DefaultTheme,
@@ -9,7 +9,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "../global.css";
-import { NAV_THEME } from "@/lib/constants";
+import { NAV_THEME } from "@/lib/theme";
 import React, { useRef } from "react";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { Platform } from "react-native";
@@ -21,11 +21,11 @@ import { DeepLinkHandler } from "../components/deep-link-handler";
 
 const LIGHT_THEME: Theme = {
 	...DefaultTheme,
-	colors: NAV_THEME.light,
+	colors: NAV_THEME.light.colors,
 };
 const DARK_THEME: Theme = {
 	...DarkTheme,
-	colors: NAV_THEME.dark,
+	colors: NAV_THEME.dark.colors,
 };
 
 export const unstable_settings = {
@@ -73,7 +73,7 @@ export default function RootLayout() {
 					</Stack> */}
 
 					<Slot />
-
+					<PortalHost />
 				</GestureHandlerRootView>
 			</ThemeProvider>
 		</ConvexBetterAuthProvider>

@@ -1,14 +1,7 @@
 import { Redirect } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
-import { NAV_THEME } from '@/lib/constants';
-import { useEffect, useState } from 'react';
 import { authClient } from '@/lib/auth-client';
-import {
-    Authenticated,
-    Unauthenticated,
-    AuthLoading,
-    useQuery,
-} from "convex/react";
+import { NAV_THEME } from '@/lib/theme';
 
 const Page = () => {
     const { data: session, isPending } = authClient.useSession();
@@ -17,7 +10,7 @@ const Page = () => {
     if (isPending) {
         return (
             <View className="flex-1 items-center justify-center">
-                <ActivityIndicator size="large" color={NAV_THEME.light.text} />
+                <ActivityIndicator size="large" color={NAV_THEME.light.colors.text} />
             </View>
         );
     }

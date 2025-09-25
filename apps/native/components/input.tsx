@@ -36,13 +36,12 @@ export const Input: React.FC<InputProps> = ({
 					</View>
 				)}
 				<TextInput
-					className={`w-full bg-card border border-border rounded-lg text-foreground text-base ${
-						leftIcon ? "px-12" : "px-4"
-					} ${rightIcon ? "pr-12" : ""} ${className}`}
+					className={`w-full bg-card border border-border rounded-lg text-foreground text-base ${leftIcon ? "px-12" : "px-4"
+						} ${rightIcon ? "pr-12" : ""} ${className}`}
 					placeholderTextColor="#9CA3AF"
 					style={{
 						height: 52,
-						lineHeight: 16,
+						lineHeight: 18,
 						textAlignVertical: 'center',
 						includeFontPadding: false,
 						paddingTop: 0,

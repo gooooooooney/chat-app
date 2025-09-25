@@ -1,9 +1,9 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { FriendRequestStatus } from "./schema";
-import type { 
+import { mutation, query } from "../_generated/server";
+import { FriendRequestStatus } from "../schema";
+import type {
   UserProfileWithId,
-} from "./types";
+} from "../types";
 
 // 验证自定义ID格式
 function validateCustomId(customId: string): boolean {
@@ -74,9 +74,9 @@ export const checkCustomIdAvailability = query({
   args: { customId: v.string() },
   handler: async (ctx, args): Promise<{ available: boolean; reason?: string }> => {
     if (!validateCustomId(args.customId)) {
-      return { 
-        available: false, 
-        reason: "自定义ID只能包含英文字母、数字和下划线，长度3-20位" 
+      return {
+        available: false,
+        reason: "自定义ID只能包含英文字母、数字和下划线，长度3-20位"
       };
     }
 
@@ -163,10 +163,10 @@ export const sendFriendRequest = mutation({
         createdAt: Date.now(),
       });
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: "已与该用户成为好友！",
-        autoAccepted: true 
+        autoAccepted: true
       };
     }
 
@@ -179,10 +179,10 @@ export const sendFriendRequest = mutation({
       createdAt: Date.now(),
     });
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: "好友请求已发送",
-      autoAccepted: false 
+      autoAccepted: false
     };
   },
 });
@@ -203,7 +203,7 @@ export const getReceivedFriendRequests = query({
           .query("userProfiles")
           .withIndex("by_userId", (q) => q.eq("userId", request.fromUserId))
           .first();
-        
+
         return {
           ...request,
           sender,
@@ -266,7 +266,7 @@ export const getFriendsList = query({
   handler: async (ctx, args) => {
     // 因为好友关系按字典序存储，当前用户可能出现在user1Id或user2Id位置
     // 需要分别查询两种情况
-    
+
     // 情况1：当前用户ID较小，存储在user1Id位置
     const friendships1 = await ctx.db
       .query("friendships")
@@ -311,7 +311,7 @@ export const removeFriend = mutation({
     // 按字典序排列用户ID，确保能找到正确的好友关系记录
     // 无论是A删除B还是B删除A，查询的都是同一条记录
     const [user1Id, user2Id] = [args.userId, args.friendId].sort();
-    
+
     const friendship = await ctx.db
       .query("friendships")
       .withIndex("by_users", (q) => q.eq("user1Id", user1Id).eq("user2Id", user2Id))

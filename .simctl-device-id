@@ -1,0 +1,11 @@
+# iOS模拟器设备ID
+# 当前使用的设备: iPhone 16 Pro
+DEVICE_ID=449BD6A6-03BE-450C-9F95-5AEFD24FFF60
+
+# 备用设备列表 (如果主设备有问题)
+# iPhone 16 Pro Max: C9CD8AFB-7B98-449F-8E9D-1ED61C30D036
+# iPhone 16: 66BF0D33-257C-4232-AC74-1781CB9503F6
+# iPhone 16 Plus: 53039140-DE13-43DC-9DC5-5EBD37787048
+
+# 使用方法:
+# source .simctl-device-id && xcrun simctl boot $DEVICE_ID

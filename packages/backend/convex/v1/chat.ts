@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { mutation, MutationCtx, query, QueryCtx } from "./_generated/server";
-import { MessageType } from "./schema";
+import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server";
+import { MessageType } from "../schema";
 import type {
   ConversationWithParticipant,
   UserProfileWithId,
@@ -8,7 +8,7 @@ import type {
   MessageWithId,
   ConversationDetail,
   MessageWithAttachments
-} from "./types";
+} from "../types";
 
 // 创建用户资料
 export const createUserProfile = mutation({

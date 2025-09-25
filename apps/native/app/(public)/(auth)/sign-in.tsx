@@ -41,6 +41,8 @@ export default function SignIn() {
                     msg: res.error.message
                 }) || "请检查您的凭据");
             }
+
+            router.push("/(authenticated)/(tabs)");
         } catch (error: any) {
             Alert.alert("登录失败", error?.message || "请检查您的凭据");
         } finally {

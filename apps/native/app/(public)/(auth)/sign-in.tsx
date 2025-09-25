@@ -3,7 +3,6 @@ import {
     View,
     Text,
     Pressable,
-    KeyboardAvoidingView,
     Platform,
     ScrollView,
     Alert,
@@ -14,6 +13,7 @@ import { Container } from "@/components/container";
 import { Input } from "@/components/input";
 import { useRouter } from "expo-router";
 import { cn } from "@/lib/utils";
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 export default function SignIn() {
     const [email, setEmail] = useState("");
@@ -52,101 +52,98 @@ export default function SignIn() {
 
     return (
         <Container>
-            <KeyboardAvoidingView
+            <KeyboardAwareScrollView
+                ScrollViewComponent={ScrollView}
                 className="flex-1"
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                contentContainerStyle={{ flexGrow: 1 }}
+                keyboardShouldPersistTaps="handled"
+
             >
-                <ScrollView
-                    className="flex-1"
-                    contentContainerStyle={{ flexGrow: 1 }}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    <View className="flex-1 justify-center px-6 py-12">
-                        {/* Logo/Brand Section */}
-                        <View className="items-center mb-12">
-                            <View className="w-20 h-20 bg-primary rounded-full items-center justify-center mb-4">
-                                <Ionicons name="chatbubbles" size={40} color="white" />
-                            </View>
-                            <Text className="text-3xl font-bold text-foreground text-center">
-                                欢迎回来
-                            </Text>
-                            <Text className="text-base text-muted-foreground text-center mt-2">
-                                登录您的账户继续使用
-                            </Text>
+                <View className="flex-1 justify-center px-6 py-12">
+                    {/* Logo/Brand Section */}
+                    <View className="items-center mb-12">
+                        <View className="w-20 h-20 bg-primary rounded-full items-center justify-center mb-4">
+                            <Ionicons name="chatbubbles" size={40} color="white" />
                         </View>
-
-                        {/* Form Section */}
-                        <View className="gap-y-2">
-                            {/* Email Input */}
-                            <Input
-                                label="邮箱地址"
-                                placeholder="输入您的邮箱"
-                                value={email}
-                                onChangeText={setEmail}
-                                leftIcon="mail-outline"
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                                textContentType="emailAddress"
-                                accessibilityLabel="邮箱地址输入框"
-                                accessibilityHint="请输入您的邮箱地址"
-                            />
-
-                            {/* Password Input */}
-                            <Input
-                                label="密码"
-                                placeholder="输入您的密码"
-                                value={password}
-                                onChangeText={setPassword}
-                                leftIcon="lock-closed-outline"
-                                rightIcon={showPassword ? "eye-off-outline" : "eye-outline"}
-                                onRightIconPress={() => setShowPassword(!showPassword)}
-                                rightIconAccessibilityLabel={showPassword ? "隐藏密码" : "显示密码"}
-                                secureTextEntry={!showPassword}
-                                textContentType="password"
-                                accessibilityLabel="密码输入框"
-                                accessibilityHint="请输入您的密码"
-                            />
-
-                            {/* Forgot Password Link */}
-                            <View className="items-end mt-2">
-                                <Pressable onPress={() => router.push("/forgot-password")} className="py-2">
-                                    <Text className="text-primary font-medium text-base">忘记密码？</Text>
-                                </Pressable>
-                            </View>
-
-                            {/* Login Button */}
-                            <Pressable
-                                className={`w-full rounded-lg py-4 items-center mt-6 ${isLoading
-                                    ? "bg-muted "
-                                    : "bg-primary active:bg-primary/90"
-                                    }`}
-                                onPress={handleLogin}
-                                disabled={isLoading}
-                                accessibilityLabel="登录按钮"
-                                accessibilityHint="点击登录您的账户"
-                                accessibilityRole="button"
-                                accessibilityState={{ disabled: isLoading }}
-                            >
-                                <Text className={cn("text-primary-foreground font-semibold text-base", isLoading && "text-primary/50")}>
-                                    {isLoading ? "登录中..." : "登录"}
-                                </Text>
-                            </Pressable>
-                        </View>
-
-                        {/* Sign Up Link */}
-                        <View className="mt-8 flex-row justify-center items-center">
-                            <Text className="text-muted-foreground">还没有账户？</Text>
-                            <Pressable
-                                onPress={() => router.replace("/sign-up")}
-                                className="ml-1"
-                            >
-                                <Text className="text-primary font-medium">立即注册</Text>
-                            </Pressable>
-                        </View>
+                        <Text className="text-3xl font-bold text-foreground text-center">
+                            欢迎回来
+                        </Text>
+                        <Text className="text-base text-muted-foreground text-center mt-2">
+                            登录您的账户继续使用
+                        </Text>
                     </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
+
+                    {/* Form Section */}
+                    <View className="gap-y-2">
+                        {/* Email Input */}
+                        <Input
+                            label="邮箱地址"
+                            placeholder="输入您的邮箱"
+                            value={email}
+                            onChangeText={setEmail}
+                            leftIcon="mail-outline"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            textContentType="emailAddress"
+                            accessibilityLabel="邮箱地址输入框"
+                            accessibilityHint="请输入您的邮箱地址"
+                        />
+
+                        {/* Password Input */}
+                        <Input
+                            label="密码"
+                            placeholder="输入您的密码"
+                            value={password}
+                            onChangeText={setPassword}
+                            leftIcon="lock-closed-outline"
+                            rightIcon={showPassword ? "eye-off-outline" : "eye-outline"}
+                            onRightIconPress={() => setShowPassword(!showPassword)}
+                            rightIconAccessibilityLabel={showPassword ? "隐藏密码" : "显示密码"}
+                            secureTextEntry={!showPassword}
+                            textContentType="password"
+                            accessibilityLabel="密码输入框"
+                            accessibilityHint="请输入您的密码"
+                        />
+
+                        {/* Forgot Password Link */}
+                        <View className="items-end mt-2">
+                            <Pressable onPress={() => router.push("/forgot-password")} className="py-2">
+                                <Text className="text-primary font-medium text-base">忘记密码？</Text>
+                            </Pressable>
+                        </View>
+
+                        {/* Login Button */}
+                        <Pressable
+                            className={`w-full rounded-lg py-4 items-center mt-6 ${isLoading
+                                ? "bg-muted "
+                                : "bg-primary active:bg-primary/90"
+                                }`}
+                            onPress={handleLogin}
+                            disabled={isLoading}
+                            accessibilityLabel="登录按钮"
+                            accessibilityHint="点击登录您的账户"
+                            accessibilityRole="button"
+                            accessibilityState={{ disabled: isLoading }}
+                        >
+                            <Text className={cn("text-primary-foreground font-semibold text-base", isLoading && "text-primary/50")}>
+                                {isLoading ? "登录中..." : "登录"}
+                            </Text>
+                        </Pressable>
+                    </View>
+
+                    {/* Sign Up Link */}
+                    <View className="mt-8 flex-row justify-center items-center">
+                        <Text className="text-muted-foreground">还没有账户？</Text>
+                        <Pressable
+                            onPress={() => router.replace("/sign-up")}
+                            className="ml-1"
+                        >
+                            <Text className="text-primary font-medium">立即注册</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </KeyboardAwareScrollView>
         </Container>
     );
 }

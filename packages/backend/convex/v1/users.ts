@@ -326,3 +326,52 @@ export const removeFriend = mutation({
     return { success: true };
   },
 });
+
+// 检查两个用户之间的关系状态
+export const checkFriendshipStatus = query({
+  args: {
+    currentUserId: v.string(),
+    targetUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (args.currentUserId === args.targetUserId) {
+      return { status: "self" };
+    }
+
+    // 检查是否已经是好友
+    const [user1Id, user2Id] = [args.currentUserId, args.targetUserId].sort();
+    const friendship = await ctx.db
+      .query("friendships")
+      .withIndex("by_users", (q) => q.eq("user1Id", user1Id).eq("user2Id", user2Id))
+      .first();
+
+    if (friendship) {
+      return { status: "friend", friendshipId: friendship._id };
+    }
+
+    // 检查是否有待处理的请求 (当前用户发送给目标用户)
+    const sentRequest = await ctx.db
+      .query("friendRequests")
+      .withIndex("by_users", (q) => q.eq("fromUserId", args.currentUserId).eq("toUserId", args.targetUserId))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .first();
+
+    if (sentRequest) {
+      return { status: "sent_pending", requestId: sentRequest._id };
+    }
+
+    // 检查是否有待处理的请求 (目标用户发送给当前用户)
+    const receivedRequest = await ctx.db
+      .query("friendRequests")
+      .withIndex("by_users", (q) => q.eq("fromUserId", args.targetUserId).eq("toUserId", args.currentUserId))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .first();
+
+    if (receivedRequest) {
+      return { status: "received_pending", requestId: receivedRequest._id };
+    }
+
+    // 默认是陌生人
+    return { status: "stranger" };
+  },
+});

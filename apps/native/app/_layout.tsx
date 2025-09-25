@@ -13,6 +13,7 @@ import { NAV_THEME } from "@/lib/theme";
 import React, { useRef } from "react";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { Platform } from "react-native";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { setAndroidNavigationBar } from "@/lib/android-navigation-bar";
 import { Slot } from "expo-router";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
@@ -63,8 +64,9 @@ export default function RootLayout() {
 			<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
 				<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
 				<GestureHandlerRootView style={{ flex: 1 }}>
-					<DeepLinkHandler />
-					{/* <Stack>
+					<KeyboardProvider>
+						<DeepLinkHandler />
+						{/* <Stack>
 						<Stack.Screen name="(drawer)" options={{ headerShown: false }} />
 						<Stack.Screen
 							name="modal"
@@ -72,8 +74,9 @@ export default function RootLayout() {
 						/>
 					</Stack> */}
 
-					<Slot />
-					<PortalHost />
+						<Slot />
+						<PortalHost />
+					</KeyboardProvider>
 				</GestureHandlerRootView>
 			</ThemeProvider>
 		</ConvexBetterAuthProvider>

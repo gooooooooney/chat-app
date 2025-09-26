@@ -4,92 +4,33 @@ import { FriendRequestStatus } from "../schema";
 import type {
   UserProfileWithId,
 } from "../types";
+import { authComponent, createAuth } from "../auth";
+import { api } from "../_generated/api";
 
-// 验证自定义ID格式
-function validateCustomId(customId: string): boolean {
-  // 只允许英文字母、数字和下划线，长度3-20位
-  const regex = /^[a-zA-Z0-9_]{3,20}$/;
-  return regex.test(customId);
-}
-
-// 设置或更新自定义ID
-export const setCustomId = mutation({
-  args: {
-    userId: v.string(),
-    customId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    // 验证格式
-    if (!validateCustomId(args.customId)) {
-      throw new Error("自定义ID只能包含英文字母、数字和下划线，长度3-20位");
-    }
-
-    // 检查ID是否已被使用
-    const existingUser = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_customId", (q) => q.eq("customId", args.customId))
-      .first();
-
-    if (existingUser && existingUser.userId !== args.userId) {
-      throw new Error("该自定义ID已被使用");
-    }
-
-    // 获取当前用户资料
-    const currentUser = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .first();
-
-    if (!currentUser) {
-      throw new Error("用户资料不存在");
-    }
-
-    // 更新自定义ID
-    await ctx.db.patch(currentUser._id, {
-      customId: args.customId,
-      updatedAt: Date.now(),
-    });
-
-    return { success: true };
-  },
-});
-
-// 通过自定义ID查找用户
-export const findUserByCustomId = query({
-  args: { customId: v.string() },
+// 通过邮箱查找用户
+export const findUserByEmail = query({
+  args: { email: v.string() },
   handler: async (ctx, args): Promise<UserProfileWithId | null> => {
-    if (!validateCustomId(args.customId)) {
+    // 使用 better-auth 组件查询用户
+
+    const authUsers = await ctx.db
+      .query("userProfiles")
+      .filter((q) => q.eq(q.field("email"), args.email))
+      .collect();
+
+    if (authUsers.length === 0) {
       return null;
     }
 
-    return await ctx.db
-      .query("userProfiles")
-      .withIndex("by_customId", (q) => q.eq("customId", args.customId))
-      .first();
-  },
-});
+    const authUser = authUsers[0];
 
-// 检查自定义ID是否可用
-export const checkCustomIdAvailability = query({
-  args: { customId: v.string() },
-  handler: async (ctx, args): Promise<{ available: boolean; reason?: string }> => {
-    if (!validateCustomId(args.customId)) {
-      return {
-        available: false,
-        reason: "自定义ID只能包含英文字母、数字和下划线，长度3-20位"
-      };
-    }
-
-    const existingUser = await ctx.db
+    // 查找对应的用户资料
+    const userProfile = await ctx.db
       .query("userProfiles")
-      .withIndex("by_customId", (q) => q.eq("customId", args.customId))
+      .withIndex("by_userId", (q) => q.eq("userId", authUser._id))
       .first();
 
-    if (existingUser) {
-      return { available: false, reason: "该自定义ID已被使用" };
-    }
-
-    return { available: true };
+    return userProfile;
   },
 });
 
@@ -97,28 +38,28 @@ export const checkCustomIdAvailability = query({
 export const sendFriendRequest = mutation({
   args: {
     fromUserId: v.string(),
-    toCustomId: v.string(),
+    toEmail: v.string(),
     message: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // 查找目标用户
     const targetUser = await ctx.db
       .query("userProfiles")
-      .withIndex("by_customId", (q) => q.eq("customId", args.toCustomId))
+      .filter((q) => q.eq(q.field("email"), args.toEmail))
       .first();
 
     if (!targetUser) {
       throw new Error("找不到该用户");
     }
 
-    if (targetUser.userId === args.fromUserId) {
+    if (targetUser._id === args.fromUserId) {
       throw new Error("不能添加自己为好友");
     }
 
     // 检查是否已经是好友
     // 因为好友关系按字典序存储，需要按正确顺序查询
     // 例如：alice(user1) 和 bob(user2) 的关系存储为 user1Id="alice", user2Id="bob"
-    const [user1Id, user2Id] = [args.fromUserId, targetUser.userId].sort();
+    const [user1Id, user2Id] = [args.fromUserId, targetUser._id].sort();
     const existingFriendship = await ctx.db
       .query("friendships")
       .withIndex("by_users", (q) => q.eq("user1Id", user1Id).eq("user2Id", user2Id))
@@ -131,7 +72,7 @@ export const sendFriendRequest = mutation({
     // 检查是否已有待处理的请求
     const existingRequest = await ctx.db
       .query("friendRequests")
-      .withIndex("by_users", (q) => q.eq("fromUserId", args.fromUserId).eq("toUserId", targetUser.userId))
+      .withIndex("by_users", (q) => q.eq("fromUserId", args.fromUserId).eq("toUserId", targetUser._id))
       .filter((q) => q.eq(q.field("status"), "pending"))
       .first();
 
@@ -142,7 +83,7 @@ export const sendFriendRequest = mutation({
     // 检查对方是否已向你发送请求
     const reverseRequest = await ctx.db
       .query("friendRequests")
-      .withIndex("by_users", (q) => q.eq("fromUserId", targetUser.userId).eq("toUserId", args.fromUserId))
+      .withIndex("by_users", (q) => q.eq("fromUserId", targetUser._id).eq("toUserId", args.fromUserId))
       .filter((q) => q.eq(q.field("status"), "pending"))
       .first();
 
@@ -156,7 +97,7 @@ export const sendFriendRequest = mutation({
       // 创建好友关系
       // 重要：必须按字典序排列，确保数据一致性
       // 无论谁先添加谁，最终存储的记录格式都是一样的
-      const [user1Id, user2Id] = [args.fromUserId, targetUser.userId].sort();
+      const [user1Id, user2Id] = [args.fromUserId, targetUser._id].sort();
       await ctx.db.insert("friendships", {
         user1Id,  // 字典序较小的用户ID
         user2Id,  // 字典序较大的用户ID
@@ -173,7 +114,7 @@ export const sendFriendRequest = mutation({
     // 创建新的好友请求
     await ctx.db.insert("friendRequests", {
       fromUserId: args.fromUserId,
-      toUserId: targetUser.userId,
+      toUserId: targetUser._id,
       status: "pending",
       message: args.message,
       createdAt: Date.now(),

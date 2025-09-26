@@ -5,13 +5,20 @@ import { components } from "./_generated/api";
 import { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
 
-const siteUrl = process.env.AUTH_SITE_URL!;
+const siteUrl = process.env.CONVEX_SITE_URL!;
 const TRUSTED_ORIGIN_MOBILE = process.env.TRUSTED_ORIGIN_MOBILE!;
 
 // 开发环境用于存储最新的重置token
 let latestResetToken: string | null = null;
 
+console.log("🌍 环境变量:", {
+	CONVEX_SITE_URL: process.env.CONVEX_SITE_URL,
+	TRUSTED_ORIGIN_MOBILE: process.env.TRUSTED_ORIGIN_MOBILE,
+	CONVEX_DEPLOYMENT: process.env.CONVEX_DEPLOYMENT,
+	CONVEX_URL: process.env.CONVEX_URL
+});
 
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
@@ -72,6 +79,7 @@ export const createAuth = (
 export const getCurrentUser = query({
 	args: {},
 	handler: async (ctx) => {
+		console.log("获取当前用户信息");
 		return authComponent.getAuthUser(ctx);
 	},
 });
@@ -82,8 +90,8 @@ export const getLatestResetToken = query({
 	handler: async (ctx) => {
 		// 在开发阶段临时允许访问，后续可根据需要调整
 		console.log("🔑 返回最新的重置token:", latestResetToken);
-		console.log("🌍 环境信息:", { 
-			NODE_ENV: process.env.NODE_ENV, 
+		console.log("🌍 环境信息:", {
+			NODE_ENV: process.env.NODE_ENV,
 			CONVEX_CLOUD_URL: process.env.CONVEX_CLOUD_URL
 		});
 		return { token: latestResetToken };

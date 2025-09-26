@@ -26,6 +26,7 @@ const AddFriend: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Array<{
     user: UserProfileWithId;
+    email: string;
     status: "stranger" | "sent_pending" | "received_pending" | "friend" | "self";
   }>>([]);
 
@@ -44,11 +45,18 @@ const AddFriend: React.FC = () => {
   const handleSearch = useCallback(async () => {
     if (!searchText.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      Alert.alert("提示", "请输入好友的自定义ID");
+      Alert.alert("提示", "请输入好友的邮箱地址");
       return;
     }
 
-    if (!currentUser?._id) {
+    // 简单的邮箱格式验证
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(searchText.trim())) {
+      Alert.alert("提示", "请输入有效的邮箱地址");
+      return;
+    }
+
+    if (!currentUser?.userId) {
       Alert.alert("错误", "用户未登录");
       return;
     }
@@ -56,40 +64,41 @@ const AddFriend: React.FC = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsSearching(true);
 
-    const findUserQuery = await convex.query(api.v1.users.findUserByCustomId, {
-      customId: searchText.trim()
-    });
-
-    console.log(findUserQuery)
-    if (findUserQuery && findUserQuery?.userId) {
-      const friendshipStatusQuery = await convex.query(api.v1.users.checkFriendshipStatus, {
-        currentUserId: currentUser._id,
-        targetUserId: findUserQuery.userId
+    try {
+      const findUserQuery = await convex.query(api.v1.users.findUserByEmail, {
+        email: searchText.trim()
       });
 
-      if (friendshipStatusQuery) {
-        setSearchResults([{
-          user: findUserQuery,
-          status: friendshipStatusQuery.status as any
-        }]);
+      if (findUserQuery && findUserQuery?.userId) {
+        const friendshipStatusQuery = await convex.query(api.v1.users.checkFriendshipStatus, {
+          currentUserId: currentUser.userId,
+          targetUserId: findUserQuery.userId
+        });
+
+        if (friendshipStatusQuery) {
+          setSearchResults([{
+            user: findUserQuery,
+            email: searchText.trim(),
+            status: friendshipStatusQuery.status as any
+          }]);
+        }
+      } else {
+        setSearchResults([]);
+        Alert.alert("未找到用户", "该邮箱地址未注册或不存在");
       }
-    } else {
+    } catch (error) {
+      console.error('搜索用户错误:', error);
+      Alert.alert("搜索失败", "请检查网络连接后重试");
       setSearchResults([]);
-      Alert.alert("未找到用户", "请检查ID是否正确");
     }
 
     setIsSearching(false);
   }, [searchText, currentUser]);
 
   // 处理添加好友
-  const handleAddFriend = useCallback(async (user: UserProfileWithId) => {
-    if (!currentUser?._id) {
+  const handleAddFriend = useCallback(async (user: UserProfileWithId, userEmail: string) => {
+    if (!currentUser?.userId) {
       Alert.alert("错误", "用户未登录");
-      return;
-    }
-
-    if (!user.customId) {
-      Alert.alert("错误", "目标用户没有设置自定义ID");
       return;
     }
 
@@ -97,7 +106,7 @@ const AddFriend: React.FC = () => {
 
     Alert.alert(
       "添加好友",
-      `确定要添加 ${user.displayName || user.customId} 为好友吗？`,
+      `确定要添加 ${user.displayName || userEmail} 为好友吗？`,
       [
         {
           text: "取消",
@@ -109,8 +118,8 @@ const AddFriend: React.FC = () => {
           onPress: async () => {
             try {
               const result = await sendFriendRequestMutation({
-                fromUserId: currentUser._id,
-                toCustomId: user.customId!,
+                fromUserId: currentUser.userId!,
+                toEmail: userEmail,
                 message: "您好，我想添加您为好友"
               });
 
@@ -186,7 +195,7 @@ const AddFriend: React.FC = () => {
             <View className="px-4 pt-4 pb-6">
               {/* 搜索提示 */}
               <Text className="text-base text-muted-foreground mb-4 leading-5">
-                请输入好友的自定义ID（只支持英文、数字和下划线）
+                请输入好友的邮箱地址
               </Text>
 
               {/* 搜索输入框 */}
@@ -194,7 +203,7 @@ const AddFriend: React.FC = () => {
                 <TextInput
                   value={searchText}
                   onChangeText={setSearchText}
-                  placeholder="输入好友的自定义ID"
+                  placeholder="输入好友的邮箱地址"
                   placeholderTextColor="#9CA3AF"
                   className="bg-background leading-5 border border-border rounded-lg px-4 py-3 pr-12 text-base text-foreground"
                   autoCapitalize="none"
@@ -253,10 +262,10 @@ const AddFriend: React.FC = () => {
                         {/* 名称和状态 */}
                         <View className="flex-1">
                           <Text className="text-foreground text-base font-medium">
-                            {result.user.displayName || result.user.customId}
+                            {result.user.displayName || result.email.split('@')[0]}
                           </Text>
                           <Text className="text-muted-foreground text-sm mt-1">
-                            ID: {result.user.customId}
+                            邮箱: {result.email}
                           </Text>
                           {result.user.bio && (
                             <Text className="text-muted-foreground text-xs mt-1">
@@ -269,7 +278,7 @@ const AddFriend: React.FC = () => {
                       {/* 操作按钮 */}
                       {result.status === "stranger" && (
                         <Pressable
-                          onPress={() => handleAddFriend(result.user)}
+                          onPress={() => handleAddFriend(result.user, result.email)}
                           className="bg-primary rounded-lg px-4 py-2 flex-row items-center gap-2 active:bg-primary/90"
                         >
                           <UserPlus size={16} color="#ffffff" />
@@ -321,8 +330,8 @@ const AddFriend: React.FC = () => {
               <View className="bg-muted/50 rounded-lg p-4">
                 <Text className="text-muted-foreground text-sm leading-5">
                   💡 使用小贴士{"\n"}
-                  • 输入好友的自定义ID（英文、数字、下划线组合）{"\n"}
-                  • 确保ID准确，区分大小写{"\n"}
+                  • 输入好友的邮箱地址{"\n"}
+                  • 确保邮箱地址准确无误{"\n"}
                   • 如果对方也向你发送了好友请求，会自动成为好友{"\n"}
                   • 发送请求后等待对方同意即可开始聊天
                 </Text>

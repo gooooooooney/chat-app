@@ -79,11 +79,6 @@ export default function Mine() {
                   <Text variant="muted" className="mb-1">
                     {currentUser.email}
                   </Text>
-                  {userProfile?.customId && (
-                    <Text variant="small" className="text-primary">
-                      ID: {userProfile.customId}
-                    </Text>
-                  )}
                 </View>
               </View>
             </CardHeader>

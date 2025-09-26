@@ -2,19 +2,18 @@ import { useState } from "react";
 import {
     View,
     Text,
-    TouchableOpacity,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Alert,
+    TouchableOpacity, ScrollView,
+    Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { authClient, getErrorMessage } from "@/lib/auth-client";
 import { Container } from "@/components/container";
 import { Input } from "@/components/input";
 import { useRouter } from "expo-router";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { cn } from "@/lib/utils";
+import { useMutation } from "convex/react";
+import { api } from "@chat-app/backend/convex/_generated/api";
+import { getErrorMessage } from "@/lib/auth-client";
 
 
 
@@ -27,7 +26,7 @@ export default function SignUp() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
-
+    const signUpWithEmail = useMutation(api.v1.auth.signUpWithEmail);
     const handleSignUp = async () => {
         if (!name || !email || !password || !confirmPassword) {
             Alert.alert("错误", "请填写所有必填字段");
@@ -46,7 +45,7 @@ export default function SignUp() {
 
         setIsLoading(true);
         try {
-            const res = await authClient.signUp.email({
+            const res = await signUpWithEmail({
                 email,
                 password,
                 name,
@@ -174,11 +173,11 @@ export default function SignUp() {
                                 : "bg-primary active:bg-primary/90"
                                 }`}
                             onPress={handleSignUp}
-                            disabled={isLoading}
+                            // disabled={isLoading}
                             accessibilityLabel="创建账户按钮"
                             accessibilityHint="点击创建新账户"
                             accessibilityRole="button"
-                            accessibilityState={{ disabled: isLoading }}
+                        // accessibilityState={{ disabled: isLoading }}
                         >
                             <Text className={cn("text-primary-foreground font-semibold text-base", isLoading && "text-primary/50")}>
                                 {isLoading ? "注册中..." : "创建账户"}

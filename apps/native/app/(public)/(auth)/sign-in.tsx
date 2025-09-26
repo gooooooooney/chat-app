@@ -40,9 +40,10 @@ export default function SignIn() {
                     code: res.error.code,
                     msg: res.error.message
                 }) || "请检查您的凭据");
-            }
+            } else {
 
-            router.push("/(authenticated)/(tabs)");
+                router.push("/(authenticated)/(tabs)");
+            }
         } catch (error: any) {
             Alert.alert("登录失败", error?.message || "请检查您的凭据");
         } finally {

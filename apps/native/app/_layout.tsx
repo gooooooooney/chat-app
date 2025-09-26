@@ -1,4 +1,4 @@
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexProvider, ConvexReactClient, useQuery } from "convex/react";
 import { PortalHost } from "@rn-primitives/portal";
 import {
 	DarkTheme,
@@ -32,9 +32,8 @@ const DARK_THEME: Theme = {
 export const unstable_settings = {
 	initialRouteName: "(drawer)",
 };
-
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
-	expectAuth: true,
+	expectAuth: false,
 	unsavedChangesWarning: false,
 });
 

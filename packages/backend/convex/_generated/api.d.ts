@@ -14,6 +14,7 @@ import type * as http from "../http.js";
 import type * as privateData from "../privateData.js";
 import type * as todos from "../todos.js";
 import type * as types from "../types.js";
+import type * as v1_auth from "../v1/auth.js";
 import type * as v1_chat from "../v1/chat.js";
 import type * as v1_users from "../v1/users.js";
 
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   privateData: typeof privateData;
   todos: typeof todos;
   types: typeof types;
+  "v1/auth": typeof v1_auth;
   "v1/chat": typeof v1_chat;
   "v1/users": typeof v1_users;
 }>;

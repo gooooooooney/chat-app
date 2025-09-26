@@ -1,16 +1,17 @@
+import { email } from "better-auth";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // 用户在线状态类型
 export const PresenceStatus = v.union(
   v.literal("online"),
-  v.literal("away"), 
+  v.literal("away"),
   v.literal("offline")
 );
 
 // 会话类型
 export const ConversationType = v.union(
-  v.literal("direct"), 
+  v.literal("direct"),
   v.literal("group")
 );
 
@@ -40,7 +41,7 @@ export const AttachmentType = v.union(
 // 上传状态
 export const UploadStatus = v.union(
   v.literal("uploading"),
-  v.literal("completed"), 
+  v.literal("completed"),
   v.literal("failed")
 );
 
@@ -53,12 +54,11 @@ export const FriendRequestStatus = v.union(
 );
 
 export default defineSchema({
+
   // 用户扩展信息表 - 补充 better-auth 基础用户信息
   userProfiles: defineTable({
     // better-auth 的用户ID
-    userId: v.string(), 
-    // 自定义用户ID（唯一，只能是英文，用于添加好友）
-    customId: v.optional(v.string()),
+    userId: v.string(),
     // 显示名称
     displayName: v.optional(v.string()),
     // 头像URL（预留接口，可连接文件存储）
@@ -71,13 +71,12 @@ export default defineSchema({
     presence: v.optional(PresenceStatus),
     // 最后在线时间
     lastSeenAt: v.optional(v.number()),
-    // 创建时间
-    createdAt: v.number(),
     // 更新时间
     updatedAt: v.number(),
+    email: v.optional(v.string()),
+
   })
-    .index("by_userId", ["userId"])
-    .index("by_customId", ["customId"]),
+    .index("by_userId", ["userId"]),
 
   // 会话表 - 支持1v1和群组聊天
   conversations: defineTable({
@@ -215,12 +214,12 @@ export default defineSchema({
     // 例如：如果用户ID是 "alice" 和 "bob"，则 user1Id = "alice"
     // 这样可以避免存储重复的好友关系记录
     user1Id: v.string(),
-    
+
     // 用户2 ID（字典序较大的用户ID）  
     // 例如：如果用户ID是 "alice" 和 "bob"，则 user2Id = "bob"
     // 无论是alice添加bob还是bob添加alice，最终都存储为同一条记录
     user2Id: v.string(),
-    
+
     // 成为好友的时间
     createdAt: v.number(),
   })

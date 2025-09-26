@@ -32,7 +32,6 @@ export const createUserProfile = mutation({
       userId: args.userId,
       displayName: args.displayName,
       avatar: args.avatar,
-      createdAt: now,
       updatedAt: now,
     });
   },
@@ -49,21 +48,28 @@ export const getUserProfile = query({
   },
 });
 
-// 通过自定义ID创建1v1会话
-export const createDirectConversationByCustomId = mutation({
+// 通过邮箱创建1v1会话
+export const createDirectConversationByEmail = mutation({
   args: {
     userId: v.string(),
-    targetCustomId: v.string(),
+    targetEmail: v.string(),
   },
   handler: async (ctx, args) => {
     // 查找目标用户
+    const authUser = await ctx.db
+      .query("userProfiles")
+      .filter((q) => q.eq(q.field("email"), args.targetEmail))
+      .first();
+    if (!authUser) {
+      throw new Error("找不到该用户");
+    }
+
     const targetUser = await ctx.db
       .query("userProfiles")
-      .withIndex("by_customId", (q) => q.eq("customId", args.targetCustomId))
+      .withIndex("by_userId", (q) => q.eq("userId", authUser._id))
       .first();
-
     if (!targetUser) {
-      throw new Error("找不到该用户");
+      throw new Error("找不到该用户的资料");
     }
 
     if (targetUser.userId === args.userId) {

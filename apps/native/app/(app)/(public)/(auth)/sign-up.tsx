@@ -54,7 +54,7 @@ export default function SignUp() {
             if (res.error?.code) {
                 Alert.alert("注册失败", getErrorMessage({ code: res.error.code, msg: res.error.message }) || "请检查您的信息2");
             } else {
-                router.push("/(authenticated)/(tabs)");
+                router.push("/(app)/(authenticated)/(tabs)");
             }
 
         } catch (error: any) {

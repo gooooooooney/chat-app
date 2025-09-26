@@ -42,7 +42,7 @@ export default function SignIn() {
                 }) || "请检查您的凭据");
             } else {
 
-                router.push("/(authenticated)/(tabs)");
+                router.replace("/(app)/(authenticated)/(tabs)");
             }
         } catch (error: any) {
             Alert.alert("登录失败", error?.message || "请检查您的凭据");

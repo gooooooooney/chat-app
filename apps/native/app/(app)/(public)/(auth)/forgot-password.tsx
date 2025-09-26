@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
-import { Input } from "../../../components/input";
+import { Input } from "../../../../components/input";
 import { authClient } from "@/lib/auth-client";
 
 export default function ForgotPasswordScreen() {
@@ -67,7 +67,7 @@ export default function ForgotPasswordScreen() {
 		try {
 			// TODO: Implement password reset logic with better-auth
 			await authClient.resetPassword({ newPassword });
-			
+
 			setStep("success");
 		} catch (error) {
 			Alert.alert("错误", "重置密码失败，请稍后重试");
@@ -202,9 +202,8 @@ export default function ForgotPasswordScreen() {
 							<TouchableOpacity
 								onPress={handleResetPassword}
 								disabled={loading || !newPassword || !confirmPassword}
-								className={`w-full py-4 rounded-lg bg-primary mb-6 ${
-									loading || !newPassword || !confirmPassword ? "opacity-50" : ""
-								}`}
+								className={`w-full py-4 rounded-lg bg-primary mb-6 ${loading || !newPassword || !confirmPassword ? "opacity-50" : ""
+									}`}
 								accessibilityLabel="重置密码"
 								accessibilityRole="button"
 							>
@@ -271,9 +270,8 @@ export default function ForgotPasswordScreen() {
 						<TouchableOpacity
 							onPress={handleContinue}
 							disabled={loading || !email}
-							className={`w-full py-4 rounded-lg bg-primary mb-6 ${
-								loading || !email ? "opacity-50" : ""
-							}`}
+							className={`w-full py-4 rounded-lg bg-primary mb-6 ${loading || !email ? "opacity-50" : ""
+								}`}
 							accessibilityLabel="继续"
 							accessibilityRole="button"
 						>

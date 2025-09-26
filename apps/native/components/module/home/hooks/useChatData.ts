@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@chat-app/backend/convex/_generated/api";
 import { formatTime } from "../utils/formatTime";
 import type { ChatItem } from "../types";
@@ -9,14 +10,11 @@ import type { ChatItem } from "../types";
  */
 export const useChatData = () => {
 	// 获取当前用户信息
-	const currentUser = useQuery(api.auth.getCurrentUser);
+	const { data: currentUser, isPending: isCurrentUserPending } = useQuery(convexQuery(api.auth.getCurrentUser, {}));
 	const userId = currentUser?._id;
 
-	// 获取用户会话列表  
-	const conversations = useQuery(
-		api.v1.chat.getUserConversations,
-		userId ? { userId } : "skip"
-	);
+	// 获取用户会话列表
+	const { data: conversations, isPending: isConversationPending } = useQuery(convexQuery(api.v1.chat.getUserConversations, userId ? { userId } : "skip"));
 
 	// 将Convex数据转换为ChatItem格式
 	const chatData = useMemo(() => {
@@ -64,6 +62,8 @@ export const useChatData = () => {
 	return {
 		userId,
 		chatData,
-		isLoading: !conversations && userId,
+		// isLoading: !conversations && userId,
+		isCurrentUserPending,
+		isConversationPending,
 	};
 };

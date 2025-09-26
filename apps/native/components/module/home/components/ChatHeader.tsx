@@ -17,7 +17,7 @@ export const ChatHeader: React.FC = () => {
 	// 处理添加好友点击事件
 	const handleAddFriend = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-		router.push("/(authenticated)/(pages)/add-friend");
+		router.push("/(app)/(authenticated)/(pages)/add-friend");
 	};
 
 	return (
@@ -32,29 +32,29 @@ export const ChatHeader: React.FC = () => {
 				{/* 右侧操作区域 */}
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<TouchableOpacity 
+						<TouchableOpacity
 							className="p-2 rounded-full active:bg-accent"
 							activeOpacity={0.7}
 						>
-							<Plus 
-								size={24} 
-								color="#000000" 
-								className="text-foreground" 
+							<Plus
+								size={24}
+								color="#000000"
+								className="text-foreground"
 							/>
 						</TouchableOpacity>
 					</DropdownMenuTrigger>
 
-					<DropdownMenuContent 
+					<DropdownMenuContent
 						side="bottom"
 						align="end"
 						className="w-48"
 					>
 						<DropdownMenuItem onPress={handleAddFriend}>
 							<View className="flex-row items-center gap-3">
-								<UserPlus 
-									size={18} 
-									color="#666666" 
-									className="text-muted-foreground" 
+								<UserPlus
+									size={18}
+									color="#666666"
+									className="text-muted-foreground"
 								/>
 								<Text className="text-base text-foreground">
 									添加好友

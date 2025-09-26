@@ -6,13 +6,15 @@ import {
 	type Theme,
 	ThemeProvider,
 } from "@react-navigation/native";
+import { ConvexQueryClient } from "@convex-dev/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "../global.css";
 import { NAV_THEME } from "@/lib/theme";
 import React, { useRef } from "react";
 import { useColorScheme } from "@/lib/use-color-scheme";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { setAndroidNavigationBar } from "@/lib/android-navigation-bar";
 import { Slot } from "expo-router";
@@ -37,6 +39,17 @@ const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
 	unsavedChangesWarning: false,
 });
 
+const convexQueryClient = new ConvexQueryClient(convex);
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			queryKeyHashFn: convexQueryClient.hashFn(),
+			queryFn: convexQueryClient.queryFn(),
+		},
+	},
+});
+convexQueryClient.connect(queryClient);
+
 export default function RootLayout() {
 	const hasMounted = useRef(false);
 	const { colorScheme, isDarkColorScheme } = useColorScheme();
@@ -60,24 +73,18 @@ export default function RootLayout() {
 	}
 	return (
 		<ConvexBetterAuthProvider client={convex} authClient={authClient}>
-			<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-				<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
-				<GestureHandlerRootView style={{ flex: 1 }}>
-					<KeyboardProvider>
-						<DeepLinkHandler />
-						{/* <Stack>
-						<Stack.Screen name="(drawer)" options={{ headerShown: false }} />
-						<Stack.Screen
-							name="modal"
-							options={{ title: "Modal", presentation: "modal" }}
-						/>
-					</Stack> */}
-
-						<Slot />
-						<PortalHost />
-					</KeyboardProvider>
-				</GestureHandlerRootView>
-			</ThemeProvider>
+			<QueryClientProvider client={queryClient}>
+				<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+					<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
+					<GestureHandlerRootView style={{ flex: 1 }}>
+						<KeyboardProvider>
+							<DeepLinkHandler />
+							<Slot />
+							<PortalHost />
+						</KeyboardProvider>
+					</GestureHandlerRootView>
+				</ThemeProvider>
+			</QueryClientProvider>
 		</ConvexBetterAuthProvider>
 	);
 }

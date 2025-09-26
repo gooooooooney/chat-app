@@ -38,10 +38,16 @@ export default function Mine() {
           code: res.error.code,
           msg: res.error.message
         }) || "请稍后再试");
+        return; // 如果登出失败，不进行导航
       }
-      router.push("/sign-in");
+
+      // 只有登出成功才导航
+      if (res.data?.success !== false) {
+        router.replace("/(app)/(public)/(auth)/sign-in");
+      }
     } catch (error) {
       console.error("退出登录失败:", error);
+      Alert.alert("退出登录失败", "请稍后再试");
     }
   };
 

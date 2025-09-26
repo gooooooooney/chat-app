@@ -13,13 +13,6 @@ const TRUSTED_ORIGIN_MOBILE = process.env.TRUSTED_ORIGIN_MOBILE!;
 // 开发环境用于存储最新的重置token
 let latestResetToken: string | null = null;
 
-console.log("🌍 环境变量:", {
-	CONVEX_SITE_URL: process.env.CONVEX_SITE_URL,
-	TRUSTED_ORIGIN_MOBILE: process.env.TRUSTED_ORIGIN_MOBILE,
-	CONVEX_DEPLOYMENT: process.env.CONVEX_DEPLOYMENT,
-	CONVEX_URL: process.env.CONVEX_URL
-});
-
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
 export const createAuth = (

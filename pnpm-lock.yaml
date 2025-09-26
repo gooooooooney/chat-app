@@ -20,6 +20,9 @@ importers:
       '@chat-app/backend':
         specifier: workspace:*
         version: link:../../packages/backend
+      '@convex-dev/react-query':
+        specifier: 0.0.0-alpha.8
+        version: 0.0.0-alpha.8(@tanstack/react-query@5.90.1(react@19.1.0))(convex@1.27.2(react@19.1.0))
       '@expo/vector-icons':
         specifier: ^15.0.2
         version: 15.0.2(expo-font@14.0.8(expo@54.0.10)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
@@ -849,6 +852,12 @@ packages:
       convex: ^1.26.2
       react: ^18.3.1 || ^19.0.0
       react-dom: ^18.3.1 || ^19.0.0
+
+  '@convex-dev/react-query@0.0.0-alpha.8':
+    resolution: {integrity: sha512-Rv/q7/CplU75f7ckBd2vh+HoeeQ0tOrjwMl14Hk7D/03e55oUIU0TV5JYYzC79ZQyyAtoj7CmCo5ZxcmtKNv1Q==}
+    peerDependencies:
+      '@tanstack/react-query': ^5.0.0
+      convex: ^1.17.0
 
   '@egjs/hammerjs@2.0.17':
     resolution: {integrity: sha512-XQsZgjm2EcVUiZQf11UBJQfmZeEmOW8DpI1gsFeln6w0ae0ii4dMQEQ0kjl6DspdWX1aGY1/loyXnP0JS06e/A==}
@@ -6224,6 +6233,11 @@ snapshots:
       - '@standard-schema/spec'
       - hono
       - typescript
+
+  '@convex-dev/react-query@0.0.0-alpha.8(@tanstack/react-query@5.90.1(react@19.1.0))(convex@1.27.2(react@19.1.0))':
+    dependencies:
+      '@tanstack/react-query': 5.90.1(react@19.1.0)
+      convex: 1.27.2(react@19.1.0)
 
   '@egjs/hammerjs@2.0.17':
     dependencies:

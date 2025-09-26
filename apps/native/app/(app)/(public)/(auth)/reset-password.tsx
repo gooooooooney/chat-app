@@ -11,8 +11,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
-import { Input } from "../../../components/input";
-import { authClient } from "../../../lib/auth-client";
+import { Input } from "../../../../components/input";
+import { authClient } from "../../../../lib/auth-client";
 import { useConvex, useQuery } from "convex/react";
 import { api } from "@chat-app/backend/convex/_generated/api";
 

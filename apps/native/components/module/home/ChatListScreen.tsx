@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { View, Text } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 import { LegendList, LegendListRenderItemProps } from "@legendapp/list";
 import { Container } from "@/components/container";
 import { ChatEmptyState } from "@/components/module/home/components/empty-state";
@@ -7,12 +7,13 @@ import { ChatHeader } from "./components/ChatHeader";
 import { ChatListItem } from "./components/ChatListItem";
 import { useChatData } from "./hooks/useChatData";
 import type { ChatItem } from "./types";
+import { NAV_THEME } from "@/lib/theme";
 
 /**
  * 聊天列表主屏幕
  */
 export const ChatListScreen: React.FC = () => {
-	const { userId, chatData, isLoading } = useChatData();
+	const { userId, chatData, isConversationPending, isCurrentUserPending } = useChatData();
 
 	// 聊天项点击处理
 	const handleChatPress = useCallback((item: ChatItem) => {
@@ -31,15 +32,15 @@ export const ChatListScreen: React.FC = () => {
 			<ChatHeader />
 
 			{/* 聊天记录列表 */}
-			{!userId ? (
+			{!userId && !isCurrentUserPending ? (
 				// 未登录状态
 				<View className="flex-1 justify-center items-center">
 					<Text className="text-muted-foreground">请先登录</Text>
 				</View>
-			) : isLoading ? (
+			) : (isCurrentUserPending || isConversationPending) ? (
 				// Loading状态
 				<View className="flex-1 justify-center items-center">
-					<Text className="text-muted-foreground">加载中...</Text>
+					<ActivityIndicator size="large" color={NAV_THEME.light.colors.text} />
 				</View>
 			) : chatData.length === 0 ? (
 				// 空状态

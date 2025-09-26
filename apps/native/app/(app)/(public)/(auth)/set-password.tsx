@@ -11,8 +11,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { Input } from "../../../components/input";
-import { authClient } from "../../../lib/auth-client";
+import { Input } from "../../../../components/input";
+import { authClient } from "../../../../lib/auth-client";
 
 export default function SetPasswordScreen() {
 	const [newPassword, setNewPassword] = useState("");
@@ -24,7 +24,7 @@ export default function SetPasswordScreen() {
 	const [tokenValid, setTokenValid] = useState(true);
 	const [devMode, setDevMode] = useState(false);
 	const [manualToken, setManualToken] = useState("");
-	
+
 	const { token } = useLocalSearchParams<{ token: string }>();
 
 	useEffect(() => {
@@ -33,7 +33,7 @@ export default function SetPasswordScreen() {
 			// 在开发环境中，提供一个开发模式选项
 			if (__DEV__) {
 				Alert.alert(
-					"没有重置令牌", 
+					"没有重置令牌",
 					"要进入开发测试模式吗？",
 					[
 						{
@@ -292,9 +292,8 @@ export default function SetPasswordScreen() {
 						<TouchableOpacity
 							onPress={handleResetPassword}
 							disabled={loading || !newPassword || !confirmPassword || (devMode && !manualToken)}
-							className={`w-full py-4 rounded-lg bg-primary mb-6 ${
-								loading || !newPassword || !confirmPassword || (devMode && !manualToken) ? "opacity-50" : ""
-							}`}
+							className={`w-full py-4 rounded-lg bg-primary mb-6 ${loading || !newPassword || !confirmPassword || (devMode && !manualToken) ? "opacity-50" : ""
+								}`}
 							accessibilityLabel="重置密码"
 							accessibilityRole="button"
 						>

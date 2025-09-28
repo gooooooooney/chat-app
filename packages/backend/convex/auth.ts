@@ -73,7 +73,9 @@ export const getCurrentUser = query({
 	args: {},
 	handler: async (ctx) => {
 		console.log("获取当前用户信息");
-		return authComponent.getAuthUser(ctx);
+		const res = await authComponent.getAuthUser(ctx)
+		console.log("当前用户信息:", res);
+		return res;
 	},
 });
 

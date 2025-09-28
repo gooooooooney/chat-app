@@ -10,27 +10,38 @@ import { api } from "../_generated/api";
 // 通过邮箱查找用户
 export const findUserByEmail = query({
   args: { email: v.string() },
-  handler: async (ctx, args): Promise<UserProfileWithId | null> => {
+  handler: async (ctx, args): Promise<{ data: UserProfileWithId | null, error: string | null }> => {
     // 使用 better-auth 组件查询用户
+
+    const currentUser = await authComponent.getAuthUser(ctx);
 
     const authUsers = await ctx.db
       .query("userProfiles")
       .filter((q) => q.eq(q.field("email"), args.email))
       .collect();
 
+    console.log("findUserByEmail authUsers", authUsers);
     if (authUsers.length === 0) {
-      return null;
+      return {
+        data: null,
+        error: "该邮箱地址未注册或不存在",
+      };
     }
 
     const authUser = authUsers[0];
 
-    // 查找对应的用户资料
-    const userProfile = await ctx.db
-      .query("userProfiles")
-      .withIndex("by_userId", (q) => q.eq("userId", authUser._id))
-      .first();
+    if (authUser.userId === currentUser?._id) {
+      // 不能添加自己为好友
+      return {
+        data: null,
+        error: "不能添加自己为好友",
+      };
+    }
 
-    return userProfile;
+    return {
+      data: authUser,
+      error: null,
+    };
   },
 });
 

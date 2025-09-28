@@ -14,9 +14,12 @@ import * as Haptics from "expo-haptics";
 import { Search, UserPlus, ArrowLeft, User, SearchIcon, XIcon } from "lucide-react-native";
 import { Container } from "@/components/container";
 import { Icon } from "@/components/ui/icon";
-import { useQuery, useMutation, useConvex } from "convex/react";
+import { useQuery, useConvex } from "convex/react";
 import { api } from "@chat-app/backend/convex/_generated/api";
 import type { UserProfileWithId } from "@chat-app/backend/convex/types";
+import { useMutation } from "@tanstack/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { cn } from "@/lib/utils";
 
 /**
  * 添加好友页面
@@ -33,7 +36,9 @@ const AddFriend: React.FC = () => {
   const convex = useConvex()
   // 获取当前用户信息
   const currentUser = useQuery(api.auth.getCurrentUser);
-  const sendFriendRequestMutation = useMutation(api.v1.users.sendFriendRequest);
+  const { mutateAsync: sendFriendRequestMutation, isPending: isSendFriendRequestPending } = useMutation({
+    mutationFn: useConvexMutation(api.v1.users.sendFriendRequest)
+  });
 
   // 处理返回按钮点击
   const handleGoBack = () => {
@@ -56,7 +61,7 @@ const AddFriend: React.FC = () => {
       return;
     }
 
-    if (!currentUser?.userId) {
+    if (!currentUser?._id) {
       Alert.alert("错误", "用户未登录");
       return;
     }
@@ -69,22 +74,22 @@ const AddFriend: React.FC = () => {
         email: searchText.trim()
       });
 
-      if (findUserQuery && findUserQuery?.userId) {
+      if (findUserQuery && findUserQuery.data) {
         const friendshipStatusQuery = await convex.query(api.v1.users.checkFriendshipStatus, {
-          currentUserId: currentUser.userId,
-          targetUserId: findUserQuery.userId
+          currentUserId: currentUser._id,
+          targetUserId: findUserQuery.data.userId
         });
 
         if (friendshipStatusQuery) {
           setSearchResults([{
-            user: findUserQuery,
+            user: findUserQuery.data,
             email: searchText.trim(),
             status: friendshipStatusQuery.status as any
           }]);
         }
       } else {
         setSearchResults([]);
-        Alert.alert("未找到用户", "该邮箱地址未注册或不存在");
+        Alert.alert("警告", findUserQuery.error || "找不到该用户");
       }
     } catch (error) {
       console.error('搜索用户错误:', error);
@@ -97,7 +102,7 @@ const AddFriend: React.FC = () => {
 
   // 处理添加好友
   const handleAddFriend = useCallback(async (user: UserProfileWithId, userEmail: string) => {
-    if (!currentUser?.userId) {
+    if (!currentUser?._id) {
       Alert.alert("错误", "用户未登录");
       return;
     }
@@ -118,7 +123,7 @@ const AddFriend: React.FC = () => {
           onPress: async () => {
             try {
               const result = await sendFriendRequestMutation({
-                fromUserId: currentUser.userId!,
+                fromUserId: currentUser._id!,
                 toEmail: userEmail,
                 message: "您好，我想添加您为好友"
               });
@@ -278,8 +283,14 @@ const AddFriend: React.FC = () => {
                       {/* 操作按钮 */}
                       {result.status === "stranger" && (
                         <Pressable
+                          disabled={isSendFriendRequestPending}
                           onPress={() => handleAddFriend(result.user, result.email)}
-                          className="bg-primary rounded-lg px-4 py-2 flex-row items-center gap-2 active:bg-primary/90"
+                          className={
+                            cn(
+                              "bg-primary rounded-lg px-4 py-2 flex-row items-center gap-2 active:bg-primary/90",
+                              isSendFriendRequestPending && "opacity-50"
+                            )
+                          }
                         >
                           <UserPlus size={16} color="#ffffff" />
                           <Text className="text-primary-foreground text-sm font-medium">

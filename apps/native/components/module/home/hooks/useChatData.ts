@@ -37,8 +37,7 @@ export const useChatData = () => {
 				groupAvatars = []; // 暂时为空，后续实现
 			} else {
 				// 1v1聊天 - 需要获取对方的信息
-				// TODO: 获取对方用户的资料信息
-				name = "私聊"; // 临时名称
+				name = conversation.name || "私聊";
 			}
 
 			// 计算时间显示

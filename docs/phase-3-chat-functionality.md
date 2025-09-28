@@ -1,6 +1,6 @@
 # Phase 3: 聊天功能核心实现
 
-> 实时聊天功能的业务逻辑和状态管理实现指南
+> 实时聊天功能的业务逻辑和状态管理实现指南 (使用 TanStack React Query + Convex)
 
 ## 1. 概述
 
@@ -12,10 +12,11 @@
 
 ```typescript
 // apps/native/hooks/useChat.ts
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { convexQuery, useConvexMutation } from '@convex-dev/react-query';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import { api } from '@chat-app/backend/convex/_generated/api';
+import { Id } from '@chat-app/backend/convex/_generated/dataModel';
 
 interface UseChatOptions {
   conversationId: Id<"conversations">;
@@ -29,21 +30,31 @@ export function useChat({ conversationId, currentUserId, initialPageSize = 20 }:
   const scrollRef = useRef<any>(null);
   
   // 获取会话信息
-  const conversation = useQuery(api.conversations.getById, { 
-    conversationId,
-    userId: currentUserId 
-  });
+  const { data: conversation, isPending: isConversationPending } = useQuery(
+    convexQuery(api.v1.conversations.getConversationById, { 
+      conversationId,
+      userId: currentUserId 
+    })
+  );
   
-  // 获取消息列表 (分页)
-  const { results: messages, status, loadMore } = usePaginatedQuery(
-    api.messages.getConversationMessages,
-    { conversationId, userId: currentUserId },
-    { initialNumItems: initialPageSize }
+  // 获取消息列表
+  const { data: messagesData, isPending: isMessagesPending } = useQuery(
+    convexQuery(api.v1.messages.getConversationMessages, { 
+      conversationId, 
+      userId: currentUserId,
+      limit: initialPageSize 
+    })
   );
   
   // 发送消息
-  const sendMessageMutation = useMutation(api.messages.sendMessage);
-  const markAsReadMutation = useMutation(api.messages.markMessagesAsRead);
+  const { mutateAsync: sendMessageMutation, isPending: isSendingMessage } = useMutation({
+    mutationFn: useConvexMutation(api.v1.messages.sendMessage)
+  });
+  
+  // 标记消息已读
+  const { mutateAsync: markAsReadMutation, isPending: isMarkingRead } = useMutation({
+    mutationFn: useConvexMutation(api.v1.messages.markMessagesAsRead)
+  });
   
   // 发送文本消息
   const sendMessage = useCallback(async (content: string, type: "text" | "image" = "text") => {
@@ -71,17 +82,18 @@ export function useChat({ conversationId, currentUserId, initialPageSize = 20 }:
   
   // 加载更多消息
   const loadMoreMessages = useCallback(async () => {
-    if (isLoadingMore || hasLoadedAll || status !== "CanLoadMore") return;
+    if (isLoadingMore || hasLoadedAll || !messagesData?.hasMore) return;
     
     setIsLoadingMore(true);
     try {
-      await loadMore(20);
+      // TODO: 实现分页加载，可能需要额外的查询
+      // 这里需要根据实际的分页实现来调整
     } catch (error) {
       console.error('Failed to load more messages:', error);
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasLoadedAll, status, loadMore]);
+  }, [isLoadingMore, hasLoadedAll, messagesData?.hasMore]);
   
   // 标记消息已读
   const markMessagesAsRead = useCallback(async (messageIds: string[]) => {
@@ -116,12 +128,14 @@ export function useChat({ conversationId, currentUserId, initialPageSize = 20 }:
   return {
     // 数据
     conversation,
-    messages: messages || [],
+    messages: messagesData?.messages || [],
     
     // 状态
-    isLoading: status === "LoadingFirstPage",
+    isLoading: isConversationPending || isMessagesPending,
     isLoadingMore,
-    hasMore: status === "CanLoadMore",
+    hasMore: messagesData?.hasMore || false,
+    isSendingMessage,
+    isMarkingRead,
     
     // 操作
     sendMessage,
@@ -140,9 +154,10 @@ export function useChat({ conversationId, currentUserId, initialPageSize = 20 }:
 ```typescript
 // apps/native/hooks/useRealtimeMessages.ts
 import { useEffect, useRef } from 'react';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import { useQuery } from '@tanstack/react-query';
+import { convexQuery } from '@convex-dev/react-query';
+import { api } from '@chat-app/backend/convex/_generated/api';
+import { Id } from '@chat-app/backend/convex/_generated/dataModel';
 
 interface UseRealtimeMessagesOptions {
   conversationId: Id<"conversations">;
@@ -160,11 +175,13 @@ export function useRealtimeMessages({
   const lastMessageTimestamp = useRef<number>(Date.now());
   
   // 监听新消息
-  const newMessages = useQuery(api.messages.subscribeToConversationMessages, {
-    conversationId,
-    userId: currentUserId,
-    since: lastMessageTimestamp.current,
-  });
+  const { data: newMessages } = useQuery(
+    convexQuery(api.v1.subscriptions.subscribeToConversationMessages, {
+      conversationId,
+      userId: currentUserId,
+      since: lastMessageTimestamp.current,
+    })
+  );
   
   // 处理新消息
   useEffect(() => {
@@ -196,18 +213,23 @@ export function useRealtimeMessages({
 
 ```typescript
 // apps/native/hooks/useConversations.ts
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { convexQuery, useConvexMutation } from '@convex-dev/react-query';
 import { useCallback } from 'react';
-import { api } from '@/convex/_generated/api';
+import { api } from '@chat-app/backend/convex/_generated/api';
 
 export function useConversations(currentUserId: string) {
   // 获取用户会话列表
-  const conversations = useQuery(api.conversations.getUserConversations, {
-    userId: currentUserId,
-  });
+  const { data: conversations, isPending: isConversationsPending } = useQuery(
+    convexQuery(api.v1.chat.getUserConversations, {
+      userId: currentUserId,
+    })
+  );
   
   // 创建新会话
-  const createConversationMutation = useMutation(api.conversations.createConversation);
+  const { mutateAsync: createConversationMutation, isPending: isCreatingConversation } = useMutation({
+    mutationFn: useConvexMutation(api.v1.conversations.createConversation)
+  });
   
   // 创建或获取对话
   const createOrGetConversation = useCallback(async (options: {
@@ -246,7 +268,8 @@ export function useConversations(currentUserId: string) {
     createOrGetConversation,
     startChatWithFriend,
     createGroupChat,
-    isLoading: conversations === undefined,
+    isLoading: isConversationsPending,
+    isCreatingConversation,
   };
 }
 ```
@@ -360,17 +383,21 @@ export function SystemMessage({ content, timestamp }: SystemMessageProps) {
 ```typescript
 // apps/native/hooks/useMessageStatus.ts
 import { useEffect, useState } from 'react';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { useQuery } from '@tanstack/react-query';
+import { convexQuery } from '@convex-dev/react-query';
+import { api } from '@chat-app/backend/convex/_generated/api';
+import { Id } from '@chat-app/backend/convex/_generated/dataModel';
 
 export function useMessageStatus(messageId: string, conversationId: string) {
   const [status, setStatus] = useState<'sending' | 'sent' | 'delivered' | 'read' | 'failed'>('sending');
   
   // 查询消息状态
-  const messageStatus = useQuery(api.messages.getMessageStatus, {
-    messageId: messageId as Id<"messages">,
-    conversationId: conversationId as Id<"conversations">,
-  });
+  const { data: messageStatus } = useQuery(
+    convexQuery(api.v1.messages.getMessageStatus, {
+      messageId: messageId as Id<"messages">,
+      conversationId: conversationId as Id<"conversations">,
+    })
+  );
   
   useEffect(() => {
     if (messageStatus) {
@@ -447,9 +474,157 @@ export function useOptimisticMessages(realMessages: any[] = []) {
 }
 ```
 
-## 5. 消息操作功能
+## 5. 好友系统集成
 
-### 5.1 消息长按菜单
+### 5.1 好友请求处理
+
+```typescript
+// apps/native/hooks/useFriendRequests.ts
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { convexQuery, useConvexMutation } from '@convex-dev/react-query';
+import { useCallback } from 'react';
+import { api } from '@chat-app/backend/convex/_generated/api';
+
+export function useFriendRequests(currentUserId: string) {
+  // 获取收到的好友请求
+  const { data: receivedRequests, isPending: isLoadingReceived } = useQuery(
+    convexQuery(api.v1.users.getReceivedFriendRequests, {
+      userId: currentUserId,
+    })
+  );
+  
+  // 发送好友请求
+  const { mutateAsync: sendFriendRequestMutation, isPending: isSendFriendRequestPending } = useMutation({
+    mutationFn: useConvexMutation(api.v1.users.sendFriendRequest)
+  });
+  
+  // 响应好友请求
+  const { mutateAsync: respondToRequestMutation, isPending: isRespondingToRequest } = useMutation({
+    mutationFn: useConvexMutation(api.v1.users.respondToFriendRequest)
+  });
+  
+  // 发送好友请求
+  const sendFriendRequest = useCallback(async (toEmail: string, message?: string) => {
+    try {
+      const result = await sendFriendRequestMutation({
+        fromUserId: currentUserId,
+        toEmail,
+        message,
+      });
+      return result;
+    } catch (error) {
+      console.error('Failed to send friend request:', error);
+      throw error;
+    }
+  }, [currentUserId, sendFriendRequestMutation]);
+  
+  // 接受好友请求
+  const acceptFriendRequest = useCallback(async (requestId: string) => {
+    try {
+      await respondToRequestMutation({
+        requestId,
+        userId: currentUserId,
+        action: "accept",
+      });
+    } catch (error) {
+      console.error('Failed to accept friend request:', error);
+      throw error;
+    }
+  }, [currentUserId, respondToRequestMutation]);
+  
+  // 拒绝好友请求
+  const rejectFriendRequest = useCallback(async (requestId: string) => {
+    try {
+      await respondToRequestMutation({
+        requestId,
+        userId: currentUserId,
+        action: "reject",
+      });
+    } catch (error) {
+      console.error('Failed to reject friend request:', error);
+      throw error;
+    }
+  }, [currentUserId, respondToRequestMutation]);
+  
+  return {
+    receivedRequests: receivedRequests || [],
+    isLoadingReceived,
+    sendFriendRequest,
+    acceptFriendRequest,
+    rejectFriendRequest,
+    isSendFriendRequestPending,
+    isRespondingToRequest,
+  };
+}
+```
+
+### 5.2 好友列表管理
+
+```typescript
+// apps/native/hooks/useFriends.ts
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { convexQuery, useConvexMutation } from '@convex-dev/react-query';
+import { useCallback } from 'react';
+import { api } from '@chat-app/backend/convex/_generated/api';
+
+export function useFriends(currentUserId: string) {
+  // 获取好友列表
+  const { data: friends, isPending: isLoadingFriends } = useQuery(
+    convexQuery(api.v1.users.getFriendsList, {
+      userId: currentUserId,
+    })
+  );
+  
+  // 删除好友
+  const { mutateAsync: removeFriendMutation, isPending: isRemovingFriend } = useMutation({
+    mutationFn: useConvexMutation(api.v1.users.removeFriend)
+  });
+  
+  // 检查好友关系状态
+  const { mutateAsync: checkFriendshipMutation } = useMutation({
+    mutationFn: useConvexMutation(api.v1.users.checkFriendshipStatus)
+  });
+  
+  // 删除好友
+  const removeFriend = useCallback(async (friendId: string) => {
+    try {
+      await removeFriendMutation({
+        userId: currentUserId,
+        friendId,
+      });
+    } catch (error) {
+      console.error('Failed to remove friend:', error);
+      throw error;
+    }
+  }, [currentUserId, removeFriendMutation]);
+  
+  // 检查与某用户的关系状态
+  const checkFriendshipStatus = useCallback(async (targetUserId: string) => {
+    try {
+      const status = await checkFriendshipMutation({
+        currentUserId,
+        targetUserId,
+      });
+      return status;
+    } catch (error) {
+      console.error('Failed to check friendship status:', error);
+      throw error;
+    }
+  }, [currentUserId, checkFriendshipMutation]);
+  
+  return {
+    friends: friends || [],
+    isLoadingFriends,
+    removeFriend,
+    checkFriendshipStatus,
+    isRemovingFriend,
+  };
+}
+```
+
+## 6. 消息操作功能
+
+### 6.1 消息长按菜单
 
 ```typescript
 // apps/native/components/chat/MessageActions.tsx
@@ -540,7 +715,7 @@ export function MessageActions({
 }
 ```
 
-### 5.2 消息回复功能
+### 6.2 消息回复功能
 
 ```typescript
 // apps/native/hooks/useMessageReply.ts
@@ -581,9 +756,9 @@ export function useMessageReply() {
 }
 ```
 
-## 6. 输入增强功能
+## 7. 输入增强功能
 
-### 6.1 输入建议和表情
+### 7.1 输入建议和表情
 
 ```typescript
 // apps/native/components/chat/input/MessageInputEnhanced.tsx
@@ -683,9 +858,9 @@ export function MessageInputEnhanced({
 }
 ```
 
-## 7. 错误处理和重试机制
+## 8. 错误处理和重试机制
 
-### 7.1 消息发送失败处理
+### 8.1 消息发送失败处理
 
 ```typescript
 // apps/native/hooks/useMessageRetry.ts
@@ -733,7 +908,7 @@ export function useMessageRetry() {
 }
 ```
 
-### 7.2 网络状态处理
+### 8.2 网络状态处理
 
 ```typescript
 // apps/native/hooks/useNetworkStatus.ts
@@ -762,9 +937,9 @@ export function useNetworkStatus() {
 }
 ```
 
-## 8. 性能优化策略
+## 9. 性能优化策略
 
-### 8.1 消息虚拟化
+### 9.1 消息虚拟化
 
 ```typescript
 // apps/native/components/chat/VirtualizedMessageList.tsx
@@ -824,7 +999,7 @@ export function VirtualizedMessageList({
 }
 ```
 
-### 8.2 消息预处理
+### 9.2 消息预处理
 
 ```typescript
 // apps/native/utils/messageProcessor.ts
@@ -897,12 +1072,33 @@ export class MessageProcessor {
 
 ## 总结
 
-Phase 3实现了聊天系统的核心业务逻辑，包括：
+Phase 3实现了聊天系统的核心业务逻辑，采用 **TanStack React Query + Convex** 架构：
 
-- **实时通信**: 基于Convex的实时消息监听
-- **状态管理**: 完整的消息状态和乐观更新
-- **用户体验**: 消息操作、回复、重试等功能
-- **性能优化**: 虚拟化列表和消息预处理
-- **错误处理**: 网络状态监听和重试机制
+### 🏗️ 架构优势
+- **TanStack React Query**: 提供强大的数据缓存、同步和状态管理
+- **Convex Integration**: 通过 `@convex-dev/react-query` 实现无缝集成
+- **统一API模式**: 所有API调用使用 `api.v1.**` 格式确保一致性
 
-这为聊天系统提供了稳定可靠的核心功能基础。
+### 🚀 核心功能
+- **实时通信**: 基于Convex的实时消息监听和推送
+- **好友系统**: 完整的好友请求、管理和状态检查
+- **状态管理**: 使用 `useQuery` 和 `useMutation` 的现代状态管理
+- **乐观更新**: 提升用户体验的即时反馈机制
+- **消息操作**: 回复、转发、删除等丰富的交互功能
+- **性能优化**: 虚拟化列表和智能消息预处理
+- **错误处理**: 完善的网络状态监听和重试机制
+
+### 📋 技术模式
+```typescript
+// 标准查询模式
+const { data, isPending } = useQuery(
+  convexQuery(api.v1.module.function, params)
+);
+
+// 标准变更模式  
+const { mutateAsync, isPending } = useMutation({
+  mutationFn: useConvexMutation(api.v1.module.function)
+});
+```
+
+这种架构为聊天系统提供了现代化、可扩展和高性能的技术基础。

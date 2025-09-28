@@ -100,6 +100,7 @@ export default function FriendDetailScreen() {
         type: "direct",
         participants: [currentUserId as string, friendUserId],
         createdBy: currentUserId as string,
+        name: friendDetail?.displayName
       });
       console.log("Started chat with conversationId:", conversationId);
       return conversationId;

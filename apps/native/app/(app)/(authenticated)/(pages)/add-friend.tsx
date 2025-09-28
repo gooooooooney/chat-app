@@ -77,7 +77,7 @@ const AddFriend: React.FC = () => {
       if (findUserQuery && findUserQuery.data) {
         const friendshipStatusQuery = await convex.query(api.v1.users.checkFriendshipStatus, {
           currentUserId: currentUser._id,
-          targetUserId: findUserQuery.data.userId
+          targetUserId: findUserQuery.data.userId,
         });
 
         if (friendshipStatusQuery) {

@@ -1,11 +1,32 @@
 import { TabBarIcon } from "@/components/tabbar-icon";
 import { Icon } from "@/components/ui/icon";
+import { IconWithBadge } from "@/components/icon-with-badge";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { Tabs } from "expo-router";
 import { MessageCircleIcon, UserRound, UsersRoundIcon } from "lucide-react-native";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "@chat-app/backend/convex/_generated/api";
+import { useNotification } from "@/contexts/NotificationContext";
 
 export default function TabLayout() {
 	const { isDarkColorScheme } = useColorScheme();
+	const { hasViewedContacts } = useNotification();
+
+	// 获取当前用户信息
+	const { data: currentUser } = useQuery(
+		convexQuery(api.auth.getCurrentUser, {})
+	);
+	const userId = currentUser?._id;
+
+	// 获取收到的好友请求数量
+	const { data: friendRequests } = useQuery(
+		convexQuery(api.v1.users.getReceivedFriendRequests, userId ? { userId } : "skip")
+	);
+
+	const friendRequestCount = friendRequests?.length || 0;
+	// 只有在用户还没有查看过联系人页面且有好友请求时才显示badge
+	const showBadge = !hasViewedContacts && friendRequestCount > 0;
 
 	return (
 		<Tabs
@@ -39,7 +60,11 @@ export default function TabLayout() {
 				options={{
 					title: "通讯录",
 					tabBarIcon: ({ color }) => (
-						<Icon as={UsersRoundIcon} color={color} />
+						<IconWithBadge
+							as={UsersRoundIcon}
+							color={color}
+							badgeCount={showBadge ? friendRequestCount : 0}
+						/>
 					),
 				}}
 			/>

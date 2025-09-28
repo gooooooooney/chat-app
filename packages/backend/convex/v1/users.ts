@@ -63,14 +63,14 @@ export const sendFriendRequest = mutation({
       throw new Error("找不到该用户");
     }
 
-    if (targetUser._id === args.fromUserId) {
+    if (targetUser.userId === args.fromUserId) {
       throw new Error("不能添加自己为好友");
     }
 
     // 检查是否已经是好友
     // 因为好友关系按字典序存储，需要按正确顺序查询
     // 例如：alice(user1) 和 bob(user2) 的关系存储为 user1Id="alice", user2Id="bob"
-    const [user1Id, user2Id] = [args.fromUserId, targetUser._id].sort();
+    const [user1Id, user2Id] = [args.fromUserId, targetUser.userId].sort();
     const existingFriendship = await ctx.db
       .query("friendships")
       .withIndex("by_users", (q) => q.eq("user1Id", user1Id).eq("user2Id", user2Id))
@@ -83,7 +83,7 @@ export const sendFriendRequest = mutation({
     // 检查是否已有待处理的请求
     const existingRequest = await ctx.db
       .query("friendRequests")
-      .withIndex("by_users", (q) => q.eq("fromUserId", args.fromUserId).eq("toUserId", targetUser._id))
+      .withIndex("by_users", (q) => q.eq("fromUserId", args.fromUserId).eq("toUserId", targetUser.userId))
       .filter((q) => q.eq(q.field("status"), "pending"))
       .first();
 
@@ -94,7 +94,7 @@ export const sendFriendRequest = mutation({
     // 检查对方是否已向你发送请求
     const reverseRequest = await ctx.db
       .query("friendRequests")
-      .withIndex("by_users", (q) => q.eq("fromUserId", targetUser._id).eq("toUserId", args.fromUserId))
+      .withIndex("by_users", (q) => q.eq("fromUserId", targetUser.userId).eq("toUserId", args.fromUserId))
       .filter((q) => q.eq(q.field("status"), "pending"))
       .first();
 
@@ -108,7 +108,7 @@ export const sendFriendRequest = mutation({
       // 创建好友关系
       // 重要：必须按字典序排列，确保数据一致性
       // 无论谁先添加谁，最终存储的记录格式都是一样的
-      const [user1Id, user2Id] = [args.fromUserId, targetUser._id].sort();
+      const [user1Id, user2Id] = [args.fromUserId, targetUser.userId].sort();
       await ctx.db.insert("friendships", {
         user1Id,  // 字典序较小的用户ID
         user2Id,  // 字典序较大的用户ID
@@ -125,7 +125,7 @@ export const sendFriendRequest = mutation({
     // 创建新的好友请求
     await ctx.db.insert("friendRequests", {
       fromUserId: args.fromUserId,
-      toUserId: targetUser._id,
+      toUserId: targetUser.userId,
       status: "pending",
       message: args.message,
       createdAt: Date.now(),
@@ -147,6 +147,8 @@ export const getReceivedFriendRequests = query({
       .query("friendRequests")
       .withIndex("by_toUser_status", (q) => q.eq("toUserId", args.userId).eq("status", "pending"))
       .collect();
+
+    console.log("Received Friend Requests:", requests);
 
     // 获取发送者信息
     const requestsWithSender = await Promise.all(

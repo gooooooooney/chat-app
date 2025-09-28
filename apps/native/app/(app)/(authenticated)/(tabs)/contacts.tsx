@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import { Container } from "@/components/container";
 import { Icon } from "@/components/ui/icon";
-import { Tabs, useFocusEffect } from "expo-router";
+import { Tabs, useFocusEffect, useRouter } from "expo-router";
 import { UsersRoundIcon, UserPlusIcon } from "lucide-react-native";
 import { ScrollView, Text, View, ActivityIndicator, Pressable, Alert } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +15,7 @@ import { Id } from "@chat-app/backend/convex/_generated/dataModel";
 export default function ContactsScreen() {
 	const queryClient = useQueryClient();
 	const { markContactsAsViewed, resetContactsView } = useNotification();
+	const router = useRouter();
 
 	// 获取当前用户信息
 	const { data: currentUser, isPending: isCurrentUserPending } = useQuery(
@@ -116,10 +117,21 @@ export default function ContactsScreen() {
 		);
 	}, [handleFriendRequest, respondToFriendRequestMutation.isPending]);
 
+	// 处理好友点击
+	const handleFriendPress = useCallback((friendUserId: string) => {
+		router.push({
+			pathname: "/(app)/(authenticated)/(pages)/friend-detail",
+			params: { friendUserId }
+		});
+	}, [router]);
+
 	// 渲染好友列表项
 	const renderFriend = useCallback(({ item }: LegendListRenderItemProps<any>) => {
 		return (
-			<View className="flex-row items-center p-4 bg-card border-b border-border">
+			<Pressable 
+				className="flex-row items-center p-4 bg-card border-b border-border"
+				onPress={() => handleFriendPress(item.userId)}
+			>
 				<View className="w-12 h-12 bg-primary rounded-full items-center justify-center mr-3">
 					<Text className="text-primary-foreground font-bold text-lg">
 						{item.displayName?.charAt(0).toUpperCase() || "?"}
@@ -133,9 +145,9 @@ export default function ContactsScreen() {
 						{item._id && `ID: ${item._id}`}
 					</Text> */}
 				</View>
-			</View>
+			</Pressable>
 		);
-	}, []);
+	}, [handleFriendPress]);
 
 	return (
 		<>

@@ -16,6 +16,13 @@ import type * as todos from "../todos.js";
 import type * as types from "../types.js";
 import type * as v1_auth from "../v1/auth.js";
 import type * as v1_chat from "../v1/chat.js";
+import type * as v1_conversations from "../v1/conversations.js";
+import type * as v1_helpers_utils from "../v1/helpers/utils.js";
+import type * as v1_index from "../v1/index.js";
+import type * as v1_messages from "../v1/messages.js";
+import type * as v1_subscriptions from "../v1/subscriptions.js";
+import type * as v1_test from "../v1/test.js";
+import type * as v1_types_errors from "../v1/types/errors.js";
 import type * as v1_users from "../v1/users.js";
 
 import type {
@@ -41,6 +48,13 @@ declare const fullApi: ApiFromModules<{
   types: typeof types;
   "v1/auth": typeof v1_auth;
   "v1/chat": typeof v1_chat;
+  "v1/conversations": typeof v1_conversations;
+  "v1/helpers/utils": typeof v1_helpers_utils;
+  "v1/index": typeof v1_index;
+  "v1/messages": typeof v1_messages;
+  "v1/subscriptions": typeof v1_subscriptions;
+  "v1/test": typeof v1_test;
+  "v1/types/errors": typeof v1_types_errors;
   "v1/users": typeof v1_users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

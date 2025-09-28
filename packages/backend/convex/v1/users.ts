@@ -329,3 +329,56 @@ export const checkFriendshipStatus = query({
     return { status: "stranger" };
   },
 });
+
+// 获取好友详情信息（仅限好友可查看）
+export const getFriendDetail = query({
+  args: {
+    currentUserId: v.string(),
+    friendUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // 不能查看自己的详情（应该使用其他接口）
+    if (args.currentUserId === args.friendUserId) {
+      throw new Error("无法查看自己的详情");
+    }
+
+    // 验证是否为好友关系
+    const [user1Id, user2Id] = [args.currentUserId, args.friendUserId].sort();
+    const friendship = await ctx.db
+      .query("friendships")
+      .withIndex("by_users", (q) => q.eq("user1Id", user1Id).eq("user2Id", user2Id))
+      .first();
+
+    if (!friendship) {
+      throw new Error("只有好友才能查看详细信息");
+    }
+
+    // 获取好友的详细信息
+    const friendProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_userId", (q) => q.eq("userId", args.friendUserId))
+      .first();
+
+    if (!friendProfile) {
+      throw new Error("找不到该用户信息");
+    }
+
+    // 返回好友详情（包含邮箱信息，因为是好友关系）
+    return {
+      _id: friendProfile._id,
+      userId: friendProfile.userId,
+      displayName: friendProfile.displayName,
+      email: friendProfile.email,
+      avatar: friendProfile.avatar,
+      bio: friendProfile.bio,
+      statusMessage: friendProfile.statusMessage,
+      presence: friendProfile.presence,
+      lastSeenAt: friendProfile.lastSeenAt,
+      // 添加好友关系信息
+      friendshipInfo: {
+        friendshipId: friendship._id,
+        friendsSince: friendship.createdAt,
+      },
+    };
+  },
+});

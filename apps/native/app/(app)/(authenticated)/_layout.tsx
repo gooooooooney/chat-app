@@ -9,6 +9,7 @@ const Layout = () => {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(pages)/add-friend" options={{ headerShown: false }} />
+        <Stack.Screen name="(pages)/friend-detail" options={{ headerShown: false }} />
       </Stack>
     </NotificationProvider>
   );

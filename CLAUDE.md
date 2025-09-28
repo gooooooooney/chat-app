@@ -1,10 +1,13 @@
-# Chat App - Claude Code Configuration
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 This is a full-stack chat application built with modern TypeScript stack featuring:
 - **Frontend**: React Native (Expo) + Next.js web app
 - **Backend**: Convex real-time database with better-auth integration
 - **Architecture**: Turborepo monorepo with PNPM workspaces
+- **State Management**: TanStack React Query + Convex integration
 - **Features**: 1v1 & group chats, friend system, text & image messaging
 
 ## Project Structure
@@ -15,45 +18,20 @@ chat-app/
 │   └── native/      # React Native/Expo mobile app
 ├── packages/
 │   └── backend/     # Convex backend (schema, queries, mutations)
+├── docs/            # Phase-based implementation documentation
 ├── turbo.json       # Turborepo configuration
 └── package.json     # Root workspace configuration
 ```
 
 ## Technology Stack
-- **Runtime**: Node.js with TypeScript 5.9.2
+- **Runtime**: Node.js with TypeScript ~5.9.2 (strict requirement for Convex)
 - **Database**: Convex (real-time, serverless)
 - **Authentication**: better-auth 1.3.8 with @convex-dev/better-auth 0.8.4
+- **State Management**: TanStack React Query with @convex-dev/react-query
 - **Build System**: Turborepo 2.5.4
 - **Package Manager**: PNPM 10.17.1
-- **Mobile**: React Native with Expo
-- **Web**: Next.js with TailwindCSS & shadcn/ui
-
-## Core Features Implemented
-
-### 1. Database Schema (packages/backend/convex/schema.ts)
-Complete chat application schema with:
-- **userProfiles**: Extended user profiles with custom IDs for friend discovery
-- **conversations**: Support for direct and group chats
-- **conversationParticipants**: Member management with roles
-- **messages**: Text/image/file messaging with replies
-- **messageAttachments**: File storage interface
-- **messageReadStatus**: Read receipts
-- **friendRequests**: Friend request workflow
-- **friendships**: Normalized friendship storage using dictionary ordering
-
-### 2. Friend System (packages/backend/convex/users.ts)
-- Custom user IDs (3-20 chars, letters/numbers/underscore only)
-- Friend requests with pending/accepted/rejected/cancelled states
-- Normalized friendship storage (user1Id ≤ user2Id alphabetically)
-- Friend discovery by custom ID
-- Complete friend management workflow
-
-### 3. Chat System (packages/backend/convex/chat.ts)
-- Real-time messaging with Convex
-- Direct conversation creation between friends
-- Message threading and replies
-- Read status tracking
-- Image attachment support (interface ready)
+- **Mobile**: React Native with Expo, NativeWind, rn-primitives
+- **Web**: Next.js with TailwindCSS & radix-ui
 
 ## Development Commands
 
@@ -82,8 +60,8 @@ pnpm build
 # Type checking
 pnpm check-types
 
-# Available but not configured
-turbo lint         # Linting (if configured)
+# Linting (if configured)
+turbo lint
 ```
 
 ### Convex Specific
@@ -95,85 +73,189 @@ npx convex deploy                 # Deploy to production
 npx convex dashboard              # Open Convex dashboard
 ```
 
-## Key Architecture Decisions
+## Architecture Patterns
 
-### 1. Friendship Data Model
-- **Problem**: Avoid duplicate friendship records (A→B and B→A)
-- **Solution**: Dictionary ordering - always store smaller userId as user1Id
-- **Implementation**: `const [user1Id, user2Id] = [userA, userB].sort()`
-- **Benefits**: Single source of truth, 50% storage reduction, simpler queries
+### 1. Query Pattern (TanStack React Query + Convex)
+```typescript
+// Standard query pattern
+import { useQuery } from '@tanstack/react-query';
+import { convexQuery } from '@convex-dev/react-query';
+import { api } from '@chat-app/backend/convex/_generated/api';
 
-### 2. Type Safety with Convex
-- Uses `Doc<"tableName">` instead of manual interfaces
-- Leverages `WithoutSystemFields<T>` for clean type exports
-- Exported union types for reusability across functions
+const { data, isPending, error } = useQuery(
+  convexQuery(api.v1.module.function, params)
+);
+```
 
-### 3. Custom User IDs
-- Format: 3-20 characters, alphanumeric + underscore only
-- Enables friend discovery without exposing internal database IDs
-- Unique constraint enforced at database level
+### 2. Mutation Pattern
+```typescript
+// Standard mutation pattern
+import { useMutation } from '@tanstack/react-query';
+import { useConvexMutation } from '@convex-dev/react-query';
 
-## File Structure & Key Files
+const { mutateAsync, isPending } = useMutation({
+  mutationFn: useConvexMutation(api.v1.module.function)
+});
+```
 
-### Backend (packages/backend/convex/)
-- `schema.ts` - Complete database schema with exported union types
-- `types.ts` - TypeScript type definitions using Convex native types
-- `users.ts` - User management and friend system
-- `chat.ts` - Chat functionality and conversation management
-- `auth.ts` - better-auth integration (if exists)
-- `FRIENDSHIP_DESIGN.md` - Detailed friendship system documentation
+### 3. API Organization
+- **All API calls use `api.v1.**` format** (e.g., `api.v1.users.sendFriendRequest`)
+- Never use generic `api.**` imports
+- Specific API paths enforce clear module boundaries
+- Backend functions organized in `/convex/v1/` directory
 
-### Configuration Files
-- `turbo.json` - Defines build tasks and dependencies
-- `package.json` - Root workspace with development scripts
-- `packages/backend/package.json` - Backend dependencies
+### 4. Friendship Data Model (Critical)
+- **Normalized storage**: `const [user1Id, user2Id] = [userA, userB].sort()`
+- Always store smaller userId as user1Id (dictionary ordering)
+- Single record per friendship (not duplicate A→B and B→A)
+- Query patterns require checking both user1Id and user2Id positions
 
-## Environment & Authentication
-- Uses better-auth for authentication
-- Convex handles real-time database operations
-- Environment variables managed through Convex dashboard
-- Development vs production environments supported
+## Core Database Schema
 
-## Testing & Quality Assurance
-- TypeScript strict mode enabled
-- Type checking via `pnpm check-types`
-- No specific test framework configured yet
-- Consider adding Jest/Vitest for unit tests
-- Consider adding Playwright for E2E tests
+### Key Tables
+- **userProfiles**: Extended user profiles with better-auth integration
+- **conversations**: Direct and group chat support
+- **conversationParticipants**: Membership with roles (owner/admin/member)
+- **messages**: Text/image/file messaging with replies and threading
+- **friendships**: Normalized friendship storage (see FRIENDSHIP_DESIGN.md)
+- **friendRequests**: Complete friend request workflow
 
-## Performance Considerations
-- Convex provides automatic real-time subscriptions
-- Normalized friendship data reduces storage and query complexity
-- Indexed queries for efficient friend lookups
-- Turborepo caching for faster builds
+### Union Types (Schema Exports)
+```typescript
+// These are exported from schema.ts and used across the application
+- PresenceStatus: "online" | "away" | "offline"
+- ConversationType: "direct" | "group"
+- MessageType: "text" | "image" | "file" | "system"
+- FriendRequestStatus: "pending" | "accepted" | "rejected" | "cancelled"
+```
 
-## Security Best Practices
-- better-auth handles authentication securely
-- Friendship-based chat creation (users can only chat with friends)
-- Input validation on custom user IDs
-- Convex functions provide built-in authorization patterns
+## Mobile App Architecture
 
-## Known Issues & Solutions
-- **TypeScript Version**: Must use ~5.9.2 (not 5.8.3) for Convex compatibility
-- **iOS Simulator**: Use `xcrun simctl erase all` if device ID issues occur
-- **Environment Variables**: Remove NODE_ENV=production during development testing
+### Navigation Structure
+```
+app/
+├── (app)/                    # Main authenticated app
+│   ├── (authenticated)/     # Authenticated routes
+│   │   ├── (tabs)/          # Bottom tab navigation
+│   │   └── (pages)/         # Stack navigation for details
+│   └── (auth)/              # Authentication flows
+└── _layout.tsx              # Root layout with providers
+```
 
-## Next Steps / Recommendations
-1. Add comprehensive test suite
-2. Implement image upload with Convex file storage
-3. Add push notifications for mobile app
-4. Implement message search functionality
-5. Add conversation archiving/deletion
-6. Consider adding message encryption
-7. Add admin panel for user management
-8. Implement message reactions/emoji support
+### Key Providers Setup
+```typescript
+// Root layout provider hierarchy
+<ConvexBetterAuthProvider>
+  <QueryClientProvider>      // TanStack React Query
+    <ThemeProvider>
+      <GestureHandlerRootView>
+        <KeyboardProvider>
+          {/* App content */}
+        </KeyboardProvider>
+      </GestureHandlerRootView>
+    </ThemeProvider>
+  </QueryClientProvider>
+</ConvexBetterAuthProvider>
+```
 
-## Debugging & Development Tips
-- Use Convex dashboard to view real-time data
-- Check `turbo dev` output for all service logs
-- Mobile debugging via Expo DevTools
-- TypeScript errors show exact file:line references
-- Convex functions auto-reload during development
+## Component Architecture
+
+### UI Components
+- **Base**: rn-primitives (cross-platform React Native components)
+- **Styling**: NativeWind (TailwindCSS for React Native)
+- **Icons**: lucide-react-native
+- **Layout**: Expo Router file-based routing
+
+### Chat Components
+- `ChatScreen`: Main chat interface with data transformation
+- `ChatMessageList`: Optimized FlatList for performance
+- `MessageBubble`: Individual message rendering
+- `MessageInput`: Input with keyboard handling and attachment support
+
+## Data Flow & State Management
+
+### Convex Integration
+- Real-time subscriptions via Convex
+- Optimistic updates through TanStack React Query
+- Automatic cache management and synchronization
+- Built-in offline support and retry logic
+
+### Type Safety
+- Generated Convex types: `Doc<"tableName">`, `Id<"tableName">`
+- Schema union types exported and reused
+- TypeScript strict mode enabled across all packages
+
+## Development Best Practices
+
+### API Usage
+```typescript
+// ✅ Correct - Use specific API paths
+const conversation = useQuery(
+  convexQuery(api.v1.conversations.getConversationById, { conversationId, userId })
+);
+
+// ❌ Incorrect - Don't use generic imports
+import { api } from '@chat-app/backend/convex/_generated/api';
+```
+
+### Friend System Queries
+```typescript
+// ✅ Correct - Handle normalized friendship data
+const [user1Id, user2Id] = [currentUserId, targetUserId].sort();
+const friendship = await ctx.db
+  .query("friendships")
+  .withIndex("by_users", (q) => q.eq("user1Id", user1Id).eq("user2Id", user2Id))
+  .first();
+```
+
+### Component Optimization
+```typescript
+// ✅ Performance optimized FlatList for messages
+<FlatList
+  removeClippedSubviews={true}
+  maxToRenderPerBatch={10}
+  windowSize={10}
+  initialNumToRender={15}
+  // ... other performance props
+/>
+```
+
+## Debugging & Development
+
+### Common Development Issues
+- **TypeScript Version**: Must use ~5.9.2 (Convex compatibility requirement)
+- **iOS Simulator**: Use `xcrun simctl erase all` for device ID issues
+- **Environment Variables**: Managed through Convex dashboard
+
+### Development Tools
+- Convex dashboard for real-time data inspection
+- Expo DevTools for mobile debugging
+- Turborepo TUI for build monitoring
+- TypeScript errors with exact file:line references
+
+## Documentation Structure
+
+Phase-based implementation docs in `/docs/`:
+- `phase-1-backend-api.md`: Backend schema and API implementation
+- `phase-2-ui-components.md`: React Native UI components
+- `phase-3-chat-functionality.md`: Core chat features with TanStack patterns
+- `phase-4-offline-sync.md`: Offline synchronization
+- `phase-5-performance-optimization.md`: Performance improvements
+
+## Security & Authentication
+
+### Authentication Flow
+- better-auth handles user authentication
+- Convex integration via @convex-dev/better-auth
+- Session management across web and mobile
+- Secure user profile extensions in userProfiles table
+
+### Data Security
+- Friendship-based chat access control
+- Input validation on custom user IDs (3-20 chars, alphanumeric + underscore)
+- Convex built-in authorization patterns
+- Real-time data with proper access controls
 
 ---
-*This configuration reflects a production-ready chat application architecture with modern TypeScript tooling and real-time capabilities.*
+
+*This configuration reflects a production-ready chat application using modern React patterns with TanStack React Query + Convex integration.*

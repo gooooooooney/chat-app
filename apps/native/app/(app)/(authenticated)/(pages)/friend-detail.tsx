@@ -1,21 +1,21 @@
 import React from "react";
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
   Pressable,
   Alert
 } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { api } from "@chat-app/backend/convex/_generated/api";
 import { Container } from "@/components/container";
 import { Icon } from "@/components/ui/icon";
-import { 
-  ArrowLeftIcon, 
-  MessageCircleIcon, 
+import {
+  ArrowLeftIcon,
+  MessageCircleIcon,
   UserIcon,
   ClockIcon,
   CalendarIcon,
@@ -34,16 +34,21 @@ export default function FriendDetailScreen() {
   );
   const currentUserId = currentUser?._id;
 
+  const { mutateAsync: createConversation, isPending: isCreateConversationPending } = useMutation({
+    mutationFn: useConvexMutation(api.v1.conversations.createConversation),
+    mutationKey: ["createConversation"]
+  })
+
   // 获取好友详情
-  const { 
-    data: friendDetail, 
-    isPending: isFriendDetailPending, 
-    error: friendDetailError 
+  const {
+    data: friendDetail,
+    isPending: isFriendDetailPending,
+    error: friendDetailError
   } = useQuery(
     convexQuery(
-      api.v1.users.getFriendDetail, 
-      currentUserId && friendUserId 
-        ? { currentUserId, friendUserId } 
+      api.v1.users.getFriendDetail,
+      currentUserId && friendUserId
+        ? { currentUserId, friendUserId }
         : "skip"
     )
   );
@@ -55,7 +60,7 @@ export default function FriendDetailScreen() {
     if (!timestamp) return "未知";
     return new Date(timestamp).toLocaleDateString("zh-CN", {
       year: "numeric",
-      month: "long", 
+      month: "long",
       day: "numeric"
     });
   };
@@ -86,10 +91,31 @@ export default function FriendDetailScreen() {
     }
   };
 
+
+  // 或者，如果需要先创建/获取会话
+  const handleStartChat = async (friendUserId: string) => {
+    try {
+      // 先获取或创建会话
+      const conversationId = await createConversation({
+        type: "direct",
+        participants: [currentUserId as string, friendUserId],
+        createdBy: currentUserId as string,
+      });
+      console.log("Started chat with conversationId:", conversationId);
+      return conversationId;
+
+    } catch (error) {
+      console.error('Failed to start chat:', error);
+    }
+  };
+
   // 发消息按钮处理
-  const handleSendMessage = () => {
-    // TODO: 导航到聊天页面
-    Alert.alert("提示", "即将跳转到聊天页面（功能待实现）");
+  const handleSendMessage = async () => {
+    const conversationId = await handleStartChat(friendUserId);
+    if (conversationId) {
+      // 然后导航
+      router.push(`/chat/${conversationId}`);
+    }
   };
 
   // 处理错误
@@ -155,14 +181,14 @@ export default function FriendDetailScreen() {
                   </Text>
                 )}
               </View>
-              
+
               <Text className="text-2xl font-bold text-foreground mb-2">
                 {friendDetail?.displayName || "未知用户"}
               </Text>
-              
+
               {/* 在线状态 */}
               <View className="flex-row items-center mb-4">
-                <View 
+                <View
                   className="w-3 h-3 rounded-full mr-2"
                   style={{ backgroundColor: getPresenceColor(friendDetail?.presence) }}
                 />
@@ -198,7 +224,7 @@ export default function FriendDetailScreen() {
                 <Text className="text-lg font-semibold text-foreground mb-4">
                   好友信息
                 </Text>
-                
+
                 <View className="space-y-3">
                   {/* 邮箱信息 */}
                   {friendDetail?.email && (

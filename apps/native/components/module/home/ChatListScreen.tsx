@@ -8,6 +8,7 @@ import { ChatListItem } from "./components/ChatListItem";
 import { useChatData } from "./hooks/useChatData";
 import type { ChatItem } from "./types";
 import { NAV_THEME } from "@/lib/theme";
+import { navigateToChat } from "@/utils/navigation";
 
 /**
  * 聊天列表主屏幕
@@ -18,7 +19,7 @@ export const ChatListScreen: React.FC = () => {
 	// 聊天项点击处理
 	const handleChatPress = useCallback((item: ChatItem) => {
 		console.log("点击聊天:", item.name);
-		// TODO: 导航到聊天详情页面
+		navigateToChat(item.id);
 	}, []);
 
 	// 渲染聊天列表项

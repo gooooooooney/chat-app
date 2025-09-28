@@ -1,11 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
-import { 
-  verifyConversationAccess, 
+import {
+  verifyConversationAccess,
   verifyParticipantsFriendship,
   getUnreadCount,
-  findExistingDirectConversation 
+  findExistingDirectConversation
 } from "./helpers/utils";
 
 /**
@@ -19,43 +19,43 @@ export const getUserConversations = query({
   },
   handler: async (ctx, args) => {
     const { userId, limit = 20 } = args;
-    
+
     try {
       // 获取用户参与的所有会话
       const participations = await ctx.db
         .query("conversationParticipants")
-        .withIndex("by_user_active", (q) => 
+        .withIndex("by_user_active", (q) =>
           q.eq("userId", userId).eq("leftAt", undefined)
         )
         .take(limit);
-      
+
       // 获取会话详情和统计信息
       const conversationsWithDetails = await Promise.all(
         participations.map(async (participation) => {
           const conversation = await ctx.db.get(participation.conversationId);
           if (!conversation) return null;
-          
+
           // 获取最后一条消息
           const lastMessage = await ctx.db
             .query("messages")
-            .withIndex("by_conversation", (q) => 
+            .withIndex("by_conversation", (q) =>
               q.eq("conversationId", conversation._id)
             )
             .order("desc")
             .first();
-          
+
           // 获取未读消息数
           const unreadCount = await getUnreadCount(ctx, conversation._id, userId);
-          
+
           // 获取参与者信息（用于显示会话名称和头像）
           const participants = await ctx.db
             .query("conversationParticipants")
-            .withIndex("by_conversation", (q) => 
+            .withIndex("by_conversation", (q) =>
               q.eq("conversationId", conversation._id)
             )
             .filter((q) => q.eq(q.field("leftAt"), undefined))
             .collect();
-          
+
           const participantProfiles = await Promise.all(
             participants.map(async (p) => {
               const profile = await ctx.db
@@ -65,7 +65,7 @@ export const getUserConversations = query({
               return profile;
             })
           );
-          
+
           return {
             ...conversation,
             lastMessage,
@@ -77,12 +77,12 @@ export const getUserConversations = query({
           };
         })
       );
-      
+
       // 过滤掉null值并按最后消息时间排序
       const validConversations = conversationsWithDetails
         .filter(Boolean)
         .sort((a, b) => (b!.lastMessageAt || 0) - (a!.lastMessageAt || 0));
-      
+
       return validConversations;
     } catch (error) {
       console.error("Failed to get user conversations:", error);
@@ -101,25 +101,25 @@ export const getConversationById = query({
   },
   handler: async (ctx, args) => {
     const { conversationId, userId } = args;
-    
+
     try {
       // 验证访问权限
       await verifyConversationAccess(ctx, userId, conversationId);
-      
+
       const conversation = await ctx.db.get(conversationId);
       if (!conversation) {
         throw new Error("Conversation not found");
       }
-      
+
       // 获取参与者信息
       const participants = await ctx.db
         .query("conversationParticipants")
-        .withIndex("by_conversation", (q) => 
+        .withIndex("by_conversation", (q) =>
           q.eq("conversationId", conversationId)
         )
         .filter((q) => q.eq(q.field("leftAt"), undefined))
         .collect();
-      
+
       const participantProfiles = await Promise.all(
         participants.map(async (p) => {
           const profile = await ctx.db
@@ -129,7 +129,7 @@ export const getConversationById = query({
           return profile ? { ...profile, role: p.role } : null;
         })
       );
-      
+
       return {
         ...conversation,
         participants: participantProfiles.filter(Boolean),
@@ -154,11 +154,11 @@ export const createConversation = mutation({
   },
   handler: async (ctx, args) => {
     const { type, participants, name, description, createdBy } = args;
-    
+
     try {
       // 验证参与者关系（确保都是好友）
       await verifyParticipantsFriendship(ctx, participants);
-      
+
       // 对于直接聊天，检查是否已存在
       if (type === "direct" && participants.length === 2) {
         const existing = await findExistingDirectConversation(ctx, participants);
@@ -166,7 +166,7 @@ export const createConversation = mutation({
           return existing._id;
         }
       }
-      
+
       // 验证群组聊天参数
       if (type === "group") {
         if (!name || name.trim().length === 0) {
@@ -176,9 +176,9 @@ export const createConversation = mutation({
           throw new Error("Group chat requires at least 2 participants");
         }
       }
-      
+
       const now = Date.now();
-      
+
       // 创建会话
       const conversationId = await ctx.db.insert("conversations", {
         type,
@@ -190,12 +190,12 @@ export const createConversation = mutation({
         createdAt: now,
         updatedAt: now,
       });
-      
+
       // 创建参与者记录
       await Promise.all(
         participants.map(async (participantId) => {
           const role = participantId === createdBy ? "owner" : "member";
-          
+
           await ctx.db.insert("conversationParticipants", {
             conversationId,
             userId: participantId,
@@ -206,16 +206,16 @@ export const createConversation = mutation({
           });
         })
       );
-      
+
       // 创建系统消息（群组聊天）
       if (type === "group") {
         const creatorProfile = await ctx.db
           .query("userProfiles")
           .withIndex("by_userId", (q) => q.eq("userId", createdBy))
           .first();
-        
+
         const systemMessage = `${creatorProfile?.displayName || "User"} created this group`;
-        
+
         await ctx.db.insert("messages", {
           conversationId,
           senderId: createdBy,
@@ -224,7 +224,7 @@ export const createConversation = mutation({
           createdAt: now,
         });
       }
-      
+
       return conversationId;
     } catch (error) {
       console.error("Failed to create conversation:", error);
@@ -244,39 +244,39 @@ export const addParticipants = mutation({
   },
   handler: async (ctx, args) => {
     const { conversationId, userIds, addedBy } = args;
-    
+
     try {
       // 验证操作者权限
       const adderParticipation = await verifyConversationAccess(ctx, addedBy, conversationId);
-      
+
       const conversation = await ctx.db.get(conversationId);
       if (!conversation) {
         throw new Error("Conversation not found");
       }
-      
+
       // 只有群组聊天可以添加参与者
       if (conversation.type !== "group") {
         throw new Error("Can only add participants to group conversations");
       }
-      
+
       // 检查权限（只有管理员和群主可以添加成员）
       if (!["owner", "admin"].includes(adderParticipation.role)) {
         throw new Error("Insufficient permissions to add participants");
       }
-      
+
       const now = Date.now();
-      
+
       // 添加新参与者
       const addedParticipants = [];
       for (const userId of userIds) {
         // 检查用户是否已是参与者
         const existing = await ctx.db
           .query("conversationParticipants")
-          .withIndex("by_conversation_user", (q) => 
+          .withIndex("by_conversation_user", (q) =>
             q.eq("conversationId", conversationId).eq("userId", userId)
           )
           .first();
-        
+
         if (!existing || existing.leftAt) {
           if (existing && existing.leftAt) {
             // 重新加入群组
@@ -299,14 +299,14 @@ export const addParticipants = mutation({
           addedParticipants.push(userId);
         }
       }
-      
+
       // 创建系统消息
       if (addedParticipants.length > 0) {
         const adderProfile = await ctx.db
           .query("userProfiles")
           .withIndex("by_userId", (q) => q.eq("userId", addedBy))
           .first();
-        
+
         const addedProfiles = await Promise.all(
           addedParticipants.map(userId =>
             ctx.db
@@ -315,14 +315,14 @@ export const addParticipants = mutation({
               .first()
           )
         );
-        
+
         const addedNames = addedProfiles
           .filter(Boolean)
           .map(p => p!.displayName || "User")
           .join(", ");
-        
+
         const systemMessage = `${adderProfile?.displayName || "User"} added ${addedNames} to the group`;
-        
+
         await ctx.db.insert("messages", {
           conversationId,
           senderId: addedBy,
@@ -330,7 +330,7 @@ export const addParticipants = mutation({
           type: "system",
           createdAt: now,
         });
-        
+
         // 更新会话最后消息时间
         await ctx.db.patch(conversationId, {
           lastMessageAt: now,
@@ -338,7 +338,7 @@ export const addParticipants = mutation({
           updatedAt: now,
         });
       }
-      
+
       return { addedCount: addedParticipants.length };
     } catch (error) {
       console.error("Failed to add participants:", error);
@@ -357,35 +357,35 @@ export const leaveConversation = mutation({
   },
   handler: async (ctx, args) => {
     const { conversationId, userId } = args;
-    
+
     try {
       const participation = await verifyConversationAccess(ctx, userId, conversationId);
-      
+
       const conversation = await ctx.db.get(conversationId);
       if (!conversation) {
         throw new Error("Conversation not found");
       }
-      
+
       // 直接聊天不允许离开
       if (conversation.type === "direct") {
         throw new Error("Cannot leave direct conversations");
       }
-      
+
       const now = Date.now();
-      
+
       // 标记用户离开
       await ctx.db.patch(participation._id, {
         leftAt: now,
       });
-      
+
       // 创建系统消息
       const userProfile = await ctx.db
         .query("userProfiles")
         .withIndex("by_userId", (q) => q.eq("userId", userId))
         .first();
-      
+
       const systemMessage = `${userProfile?.displayName || "User"} left the group`;
-      
+
       await ctx.db.insert("messages", {
         conversationId,
         senderId: userId,
@@ -393,14 +393,14 @@ export const leaveConversation = mutation({
         type: "system",
         createdAt: now,
       });
-      
+
       // 更新会话最后消息时间
       await ctx.db.patch(conversationId, {
         lastMessageAt: now,
         lastMessagePreview: systemMessage,
         updatedAt: now,
       });
-      
+
       return { success: true };
     } catch (error) {
       console.error("Failed to leave conversation:", error);
@@ -421,18 +421,18 @@ export const updateConversationSettings = mutation({
   },
   handler: async (ctx, args) => {
     const { conversationId, userId, muted, pinned } = args;
-    
+
     try {
       const participation = await verifyConversationAccess(ctx, userId, conversationId);
-      
+
       const updates: Partial<typeof participation> = {};
       if (muted !== undefined) updates.muted = muted;
       if (pinned !== undefined) updates.pinned = pinned;
-      
+
       if (Object.keys(updates).length > 0) {
         await ctx.db.patch(participation._id, updates);
       }
-      
+
       return { success: true };
     } catch (error) {
       console.error("Failed to update conversation settings:", error);

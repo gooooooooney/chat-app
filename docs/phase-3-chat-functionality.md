@@ -1,421 +1,378 @@
 # Phase 3: 聊天功能核心实现
 
-> 实时聊天功能的业务逻辑和状态管理实现指南 (使用 TanStack React Query + Convex)
+> 实时聊天功能的业务逻辑和状态管理实现指南 (使用 Convex React Hooks)
 
 ## 1. 概述
 
-本阶段实现聊天系统的核心功能，包括实时消息传递、状态管理、用户体验优化等关键业务逻辑。
+本阶段实现聊天系统的核心功能，基于当前已实现的基础架构，包括：
 
-## 2. 核心功能架构
+### ✅ 已实现功能
+1. **基础聊天界面**: ChatScreen + ChatMessageList + MessageBubble + MessageInput
+2. **消息状态系统**: sending/sent/delivered/read/failed 状态显示
+3. **实时数据同步**: 基于 Convex React hooks 的实时消息更新
+4. **性能优化**: FlatList 优化、组件 memo、自动滚动
 
-### 2.1 状态管理架构
+### 🚧 待实现功能
+1. **乐观更新机制**: WhatsApp风格的即时消息发送，失败显示红色重试图标
+2. **消息长按操作**: 支持复制、删除、回复功能
+3. **消息回复功能**: 回复时显示原消息预览，不超过一行文字
+
+## 2. 当前架构分析
+
+### 2.1 核心组件结构
+
+```typescript
+// apps/native/components/chat/ChatScreen.tsx
+export default function ChatScreen() {
+  const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
+  const currentUser = useQuery(api.auth.getCurrentUser);
+  const currentUserId = currentUser?._id || '';
+
+  const {
+    conversation,
+    messages,
+    hasMore,
+    loading,
+    error,
+    sendMessage,
+    clearError,
+  } = useChat({
+    conversationId: conversationId as Id<"conversations">,
+    userId: currentUserId
+  });
+
+  const handleSendMessage = async (content: string) => {
+    if (!content.trim() || !conversationId) return;
+    try {
+      await sendMessage(content);
+    } catch (err) {
+      // Error is handled in the hook
+    }
+  };
+
+  // 数据转换以匹配组件接口
+  const transformedMessages = useMemo(() => {
+    return messages.map((msg) => ({
+      _id: msg._id,
+      content: msg.content,
+      senderId: msg.senderId,
+      type: msg.type || 'text',
+      status: msg.status || 'sent',
+      createdAt: msg._creationTime,
+      sender: {
+        userId: msg.sender?.userId || msg.senderId,
+        displayName: msg.sender?.displayName || '未知用户',
+        avatar: msg.sender?.avatar,
+      },
+    }));
+  }, [messages]);
+
+  return (
+    <KeyboardProvider>
+      <View className="flex-1 bg-background">
+        <ChatHeader conversation={...} onBack={handleBack} />
+        <ChatMessageList 
+          messages={transformedMessages}
+          currentUserId={currentUserId}
+          hasMore={hasMore}
+        />
+        <MessageInput 
+          onSendMessage={handleSendMessage}
+          disabled={false}
+        />
+      </View>
+    </KeyboardProvider>
+  );
+}
+```
+
+### 2.2 useChat Hook 实现
 
 ```typescript
 // apps/native/hooks/useChat.ts
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { convexQuery, useConvexMutation } from '@convex-dev/react-query';
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { api } from '@chat-app/backend/convex/_generated/api';
-import { Id } from '@chat-app/backend/convex/_generated/dataModel';
+export function useChat({ conversationId, userId }: UseChatProps) {
+  const [error, setError] = useState<string | null>(null);
 
-interface UseChatOptions {
-  conversationId: Id<"conversations">;
-  currentUserId: string;
-  initialPageSize?: number;
-}
+  // 直接使用 Convex React hooks
+  const conversation = useQuery(api.v1.conversations.getConversationById, {
+    conversationId,
+    userId
+  });
 
-export function useChat({ conversationId, currentUserId, initialPageSize = 20 }: UseChatOptions) {
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasLoadedAll, setHasLoadedAll] = useState(false);
-  const scrollRef = useRef<any>(null);
-  
-  // 获取会话信息
-  const { data: conversation, isPending: isConversationPending } = useQuery(
-    convexQuery(api.v1.conversations.getConversationById, { 
-      conversationId,
-      userId: currentUserId 
-    })
-  );
-  
-  // 获取消息列表
-  const { data: messagesData, isPending: isMessagesPending } = useQuery(
-    convexQuery(api.v1.messages.getConversationMessages, { 
-      conversationId, 
-      userId: currentUserId,
-      limit: initialPageSize 
-    })
-  );
-  
-  // 发送消息
-  const { mutateAsync: sendMessageMutation, isPending: isSendingMessage } = useMutation({
-    mutationFn: useConvexMutation(api.v1.messages.sendMessage)
+  const messagesData = useQuery(api.v1.messages.getConversationMessages, {
+    conversationId,
+    userId,
+    limit: 50,
   });
-  
-  // 标记消息已读
-  const { mutateAsync: markAsReadMutation, isPending: isMarkingRead } = useMutation({
-    mutationFn: useConvexMutation(api.v1.messages.markMessagesAsRead)
-  });
-  
-  // 发送文本消息
-  const sendMessage = useCallback(async (content: string, type: "text" | "image" = "text") => {
+
+  const sendMessage = useMutation(api.v1.messages.sendMessage);
+  const markAsRead = useMutation(api.v1.messages.markMessagesAsRead);
+
+  const handleSendMessage = async (content: string, type: "text" | "image" = "text") => {
     if (!content.trim()) return;
-    
+
     try {
-      const messageId = await sendMessageMutation({
+      const messageId = await sendMessage({
         conversationId,
-        senderId: currentUserId,
+        senderId: userId,
         content: content.trim(),
         type,
       });
-      
-      // 发送成功后滚动到底部
-      setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-      
+
+      setError(null);
       return messageId;
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      throw error;
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      setError('发送消息失败，请重试');
+      throw err;
     }
-  }, [conversationId, currentUserId, sendMessageMutation]);
-  
-  // 加载更多消息
-  const loadMoreMessages = useCallback(async () => {
-    if (isLoadingMore || hasLoadedAll || !messagesData?.hasMore) return;
-    
-    setIsLoadingMore(true);
-    try {
-      // TODO: 实现分页加载，可能需要额外的查询
-      // 这里需要根据实际的分页实现来调整
-    } catch (error) {
-      console.error('Failed to load more messages:', error);
-    } finally {
-      setIsLoadingMore(false);
+  };
+
+  // 自动标记消息已读
+  useEffect(() => {
+    if (messagesData?.messages && messagesData.messages.length > 0) {
+      const unreadMessages = messagesData.messages
+        .filter((msg) => msg.senderId !== userId && !markedAsReadRef.current.has(msg._id))
+        .map((msg) => msg._id as Id<"messages">);
+
+      if (unreadMessages.length > 0) {
+        unreadMessages.forEach(id => markedAsReadRef.current.add(id));
+        handleMarkAsRead(unreadMessages);
+      }
     }
-  }, [isLoadingMore, hasLoadedAll, messagesData?.hasMore]);
-  
-  // 标记消息已读
-  const markMessagesAsRead = useCallback(async (messageIds: string[]) => {
-    if (messageIds.length === 0) return;
-    
-    try {
-      await markAsReadMutation({
-        conversationId,
-        userId: currentUserId,
-        messageIds: messageIds as Id<"messages">[],
-      });
-    } catch (error) {
-      console.error('Failed to mark messages as read:', error);
-    }
-  }, [conversationId, currentUserId, markAsReadMutation]);
-  
-  // 自动标记可见消息为已读
-  const handleViewableItemsChanged = useCallback(({ viewableItems }: any) => {
-    const unreadMessageIds = viewableItems
-      .map((item: any) => item.item)
-      .filter((message: any) => 
-        message.senderId !== currentUserId && 
-        message.status !== 'read'
-      )
-      .map((message: any) => message._id);
-    
-    if (unreadMessageIds.length > 0) {
-      markMessagesAsRead(unreadMessageIds);
-    }
-  }, [currentUserId, markMessagesAsRead]);
-  
+  }, [messagesData?.messages?.length, userId, handleMarkAsRead]);
+
   return {
-    // 数据
     conversation,
     messages: messagesData?.messages || [],
-    
-    // 状态
-    isLoading: isConversationPending || isMessagesPending,
-    isLoadingMore,
     hasMore: messagesData?.hasMore || false,
-    isSendingMessage,
-    isMarkingRead,
-    
-    // 操作
-    sendMessage,
-    loadMoreMessages,
-    markMessagesAsRead,
-    handleViewableItemsChanged,
-    
-    // Refs
-    scrollRef,
+    loading: conversation === undefined || messagesData === undefined,
+    error,
+    sendMessage: handleSendMessage,
+    markAsRead: handleMarkAsRead,
+    clearError: () => setError(null),
   };
 }
 ```
 
-### 2.2 实时消息监听
+### 2.3 MessageBubble 组件
 
 ```typescript
-// apps/native/hooks/useRealtimeMessages.ts
-import { useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { convexQuery } from '@convex-dev/react-query';
-import { api } from '@chat-app/backend/convex/_generated/api';
-import { Id } from '@chat-app/backend/convex/_generated/dataModel';
-
-interface UseRealtimeMessagesOptions {
-  conversationId: Id<"conversations">;
-  currentUserId: string;
-  onNewMessage?: (message: any) => void;
-  onMessageUpdate?: (message: any) => void;
-}
-
-export function useRealtimeMessages({
-  conversationId,
-  currentUserId,
-  onNewMessage,
-  onMessageUpdate,
-}: UseRealtimeMessagesOptions) {
-  const lastMessageTimestamp = useRef<number>(Date.now());
+// apps/native/components/chat/MessageBubble.tsx
+export const MessageBubble = React.memo(function MessageBubbleComponent({
+  message,
+  isOwn,
+  senderInfo,
+  showAvatar = true,
+  onPress,
+  onLongPress, // 🚧 待实现长按逻辑
+}: MessageBubbleProps) {
   
-  // 监听新消息
-  const { data: newMessages } = useQuery(
-    convexQuery(api.v1.subscriptions.subscribeToConversationMessages, {
-      conversationId,
-      userId: currentUserId,
-      since: lastMessageTimestamp.current,
-    })
-  );
-  
-  // 处理新消息
-  useEffect(() => {
-    if (newMessages && newMessages.length > 0) {
-      newMessages.forEach(message => {
-        // 更新最后消息时间戳
-        if (message.createdAt > lastMessageTimestamp.current) {
-          lastMessageTimestamp.current = message.createdAt;
-        }
-        
-        // 如果是新消息且不是自己发送的，触发回调
-        if (message.senderId !== currentUserId) {
-          onNewMessage?.(message);
-        }
-        
-        // 触发消息更新回调
-        onMessageUpdate?.(message);
-      });
+  const getStatusIcon = () => {
+    switch (message.status) {
+      case 'sending':
+        return <Icon as={Clock} size={12} className="text-muted-foreground" />;
+      case 'sent':
+        return <Icon as={Check} size={12} className="text-muted-foreground" />;
+      case 'delivered':
+        return <Icon as={CheckCheck} size={12} className="text-muted-foreground" />;
+      case 'read':
+        return <Icon as={CheckCheck} size={12} className="text-primary-foreground" />;
+      case 'failed': // 🚧 待实现重试功能
+        return <Icon as={XCircle} size={12} className="text-destructive" />;
+      default:
+        return null;
     }
-  }, [newMessages, currentUserId, onNewMessage, onMessageUpdate]);
-  
-  return {
-    newMessages: newMessages || [],
   };
-}
-```
 
-### 2.3 会话列表管理
-
-```typescript
-// apps/native/hooks/useConversations.ts
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { convexQuery, useConvexMutation } from '@convex-dev/react-query';
-import { useCallback } from 'react';
-import { api } from '@chat-app/backend/convex/_generated/api';
-
-export function useConversations(currentUserId: string) {
-  // 获取用户会话列表
-  const { data: conversations, isPending: isConversationsPending } = useQuery(
-    convexQuery(api.v1.chat.getUserConversations, {
-      userId: currentUserId,
-    })
-  );
-  
-  // 创建新会话
-  const { mutateAsync: createConversationMutation, isPending: isCreatingConversation } = useMutation({
-    mutationFn: useConvexMutation(api.v1.conversations.createConversation)
-  });
-  
-  // 创建或获取对话
-  const createOrGetConversation = useCallback(async (options: {
-    type: "direct" | "group";
-    participants: string[];
-    name?: string;
-  }) => {
-    try {
-      const conversationId = await createConversationMutation(options);
-      return conversationId;
-    } catch (error) {
-      console.error('Failed to create conversation:', error);
-      throw error;
-    }
-  }, [createConversationMutation]);
-  
-  // 开始与好友聊天
-  const startChatWithFriend = useCallback(async (friendUserId: string) => {
-    return await createOrGetConversation({
-      type: "direct",
-      participants: [currentUserId, friendUserId].sort(),
-    });
-  }, [currentUserId, createOrGetConversation]);
-  
-  // 创建群聊
-  const createGroupChat = useCallback(async (participants: string[], groupName: string) => {
-    return await createOrGetConversation({
-      type: "group",
-      participants: [currentUserId, ...participants].sort(),
-      name: groupName,
-    });
-  }, [currentUserId, createOrGetConversation]);
-  
-  return {
-    conversations: conversations || [],
-    createOrGetConversation,
-    startChatWithFriend,
-    createGroupChat,
-    isLoading: isConversationsPending,
-    isCreatingConversation,
-  };
-}
-```
-
-## 3. 消息类型处理
-
-### 3.1 文本消息处理
-
-```typescript
-// apps/native/components/chat/messages/TextMessage.tsx
-import React from 'react';
-import { View, Pressable } from 'react-native';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
-
-interface TextMessageProps {
-  content: string;
-  isOwn: boolean;
-  onPress?: () => void;
-  onLongPress?: () => void;
-}
-
-export function TextMessage({ content, isOwn, onPress, onLongPress }: TextMessageProps) {
-  // URL检测和处理
-  const renderContentWithLinks = () => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = content.split(urlRegex);
-    
-    return parts.map((part, index) => {
-      if (urlRegex.test(part)) {
-        return (
-          <Text
-            key={index}
-            className={cn(
-              "underline",
-              isOwn ? "text-primary-foreground" : "text-primary"
-            )}
-            onPress={() => {
-              // 处理链接点击
-              // Linking.openURL(part);
-            }}
-          >
-            {part}
-          </Text>
-        );
-      }
-      return part;
-    });
-  };
-  
   return (
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
-      delayLongPress={500}
+      className={cn(
+        "flex-row mb-3 px-4",
+        isOwn ? "justify-end" : "justify-start"
+      )}
     >
-      <Text className={cn(
-        "text-base leading-5",
-        isOwn ? "text-primary-foreground" : "text-foreground"
+      {/* 头像显示逻辑 */}
+      {!isOwn && showAvatar && (
+        <Avatar>
+          <AvatarImage source={{ uri: senderInfo?.avatar }} />
+          <AvatarFallback>
+            <Text className="text-xs font-medium">
+              {senderInfo?.displayName?.charAt(0).toUpperCase() || '?'}
+            </Text>
+          </AvatarFallback>
+        </Avatar>
+      )}
+
+      {/* 消息气泡 */}
+      <View className={cn(
+        "max-w-[75%] rounded-2xl px-3 py-2",
+        isOwn ? "bg-primary ml-auto" : "bg-muted mr-auto"
       )}>
-        {renderContentWithLinks()}
-      </Text>
+        {/* 消息内容 + 时间 + 状态 */}
+        <Text className={cn(
+          "text-base leading-5",
+          isOwn ? "text-primary-foreground" : "text-foreground"
+        )}>
+          {message.content}
+        </Text>
+        
+        <View className="flex-row items-center justify-between mt-1">
+          <Text className="text-xs opacity-70">
+            {formatTime(message.createdAt)}
+          </Text>
+          {isOwn && (
+            <View className="ml-2">
+              {getStatusIcon()}
+            </View>
+          )}
+        </View>
+      </View>
     </Pressable>
+  );
+});
+```
+
+### 2.4 MessageInput 组件
+
+```typescript
+// apps/native/components/chat/MessageInput.tsx
+export function MessageInput({
+  onSendMessage,
+  disabled = false,
+  placeholder = "输入消息...",
+  onAttach,
+  onVoiceRecord,
+}: MessageInputProps) {
+  const [message, setMessage] = useState('');
+  const [inputHeight, setInputHeight] = useState(40);
+
+  const handleSend = useCallback(() => {
+    if (message.trim() && !disabled) {
+      onSendMessage(message.trim());
+      setMessage('');
+      setInputHeight(40);
+    }
+  }, [message, disabled, onSendMessage]);
+
+  return (
+    <KeyboardStickyView>
+      <View className="flex-row items-end gap-3 bg-background border-t border-border pt-4 pb-2">
+        {/* 附件按钮 */}
+        <Button variant="ghost" size="icon" onPress={onAttach}>
+          <Plus size={20} />
+        </Button>
+
+        {/* 文本输入框 */}
+        <View className="flex-1 max-h-[120px]">
+          <TextInput
+            value={message}
+            onChangeText={setMessage}
+            placeholder={placeholder}
+            multiline
+            maxLength={2000}
+            className="bg-muted/30 border border-muted rounded-2xl px-4 py-3"
+            onContentSizeChange={handleContentSizeChange}
+          />
+          {/* 字数提示 */}
+          {message.length > 1800 && (
+            <Text variant="muted" className="text-xs mt-1 text-right">
+              {message.length}/2000
+            </Text>
+          )}
+        </View>
+
+        {/* 发送/语音按钮 */}
+        {message.trim() ? (
+          <Button size="icon" className="rounded-full bg-primary" onPress={handleSend}>
+            <Icon as={Send} size={18} className="text-primary-foreground" />
+          </Button>
+        ) : (
+          <Button variant="ghost" size="icon" onPress={onVoiceRecord}>
+            <Icon as={Mic} size={18} />
+          </Button>
+        )}
+      </View>
+    </KeyboardStickyView>
   );
 }
 ```
 
-### 3.2 系统消息处理
+## 3. 性能优化实现
+
+### 3.1 ChatMessageList 优化
 
 ```typescript
-// apps/native/components/chat/messages/SystemMessage.tsx
-import React from 'react';
-import { View } from 'react-native';
-import { Text } from '@/components/ui/text';
+// apps/native/components/chat/ChatMessageList.tsx
+export function ChatMessageList({
+  messages,
+  currentUserId,
+  onLoadMore,
+  hasMore = false,
+  loading = false,
+}: ChatMessageListProps) {
+  const flatListRef = useRef<FlatList>(null);
 
-interface SystemMessageProps {
-  content: string;
-  timestamp: number;
-}
+  // 新消息自动滚动到底部
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages.length]);
 
-export function SystemMessage({ content, timestamp }: SystemMessageProps) {
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('zh-CN', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const renderMessage = ({ item: message, index }: { item: Message; index: number }) => {
+    const isOwn = message.senderId === currentUserId;
+    const prevMessage = index > 0 ? messages[index - 1] : null;
+    const showAvatar = !isOwn && (!prevMessage || prevMessage.senderId !== message.senderId);
+
+    return (
+      <MessageBubble
+        key={message._id}
+        message={message}
+        isOwn={isOwn}
+        senderInfo={message.sender}
+        showAvatar={showAvatar}
+      />
+    );
   };
-  
+
   return (
-    <View className="items-center py-2 px-4">
-      <View className="bg-muted/50 rounded-lg px-3 py-1">
-        <Text variant="muted" className="text-xs text-center">
-          {content}
-        </Text>
-        <Text variant="muted" className="text-xs text-center opacity-70">
-          {formatTime(timestamp)}
-        </Text>
-      </View>
+    <View className="flex-1">
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        renderItem={renderMessage}
+        keyExtractor={(item) => item._id}
+        onEndReached={onLoadMore}
+        onEndReachedThreshold={0.1}
+        maintainVisibleContentPosition={{
+          minIndexForVisible: 0,
+          autoscrollToTopThreshold: 10,
+        }}
+        // 性能优化配置
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        windowSize={10}
+        initialNumToRender={15}
+        disableIntervalMomentum={true}
+        scrollEventThrottle={16}
+      />
     </View>
   );
 }
 ```
 
-## 4. 消息状态管理
+## 4. 待实现功能路线图
 
-### 4.1 发送状态处理
-
-```typescript
-// apps/native/hooks/useMessageStatus.ts
-import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { convexQuery } from '@convex-dev/react-query';
-import { api } from '@chat-app/backend/convex/_generated/api';
-import { Id } from '@chat-app/backend/convex/_generated/dataModel';
-
-export function useMessageStatus(messageId: string, conversationId: string) {
-  const [status, setStatus] = useState<'sending' | 'sent' | 'delivered' | 'read' | 'failed'>('sending');
-  
-  // 查询消息状态
-  const { data: messageStatus } = useQuery(
-    convexQuery(api.v1.messages.getMessageStatus, {
-      messageId: messageId as Id<"messages">,
-      conversationId: conversationId as Id<"conversations">,
-    })
-  );
-  
-  useEffect(() => {
-    if (messageStatus) {
-      setStatus(messageStatus.status);
-    }
-  }, [messageStatus]);
-  
-  return status;
-}
-```
-
-### 4.2 乐观更新机制
+### 4.1 乐观更新机制
 
 ```typescript
-// apps/native/hooks/useOptimisticMessages.ts
-import { useState, useCallback } from 'react';
-import { nanoid } from 'nanoid';
-
+// 🚧 待实现: apps/native/hooks/useOptimisticMessages.ts
 interface OptimisticMessage {
   _id: string;
   content: string;
@@ -429,7 +386,6 @@ interface OptimisticMessage {
 export function useOptimisticMessages(realMessages: any[] = []) {
   const [optimisticMessages, setOptimisticMessages] = useState<OptimisticMessage[]>([]);
   
-  // 添加乐观消息
   const addOptimisticMessage = useCallback((content: string, senderId: string) => {
     const tempMessage: OptimisticMessage = {
       _id: `temp-${nanoid()}`,
@@ -445,22 +401,6 @@ export function useOptimisticMessages(realMessages: any[] = []) {
     return tempMessage._id;
   }, []);
   
-  // 更新乐观消息状态
-  const updateOptimisticMessage = useCallback((tempId: string, status: "sent" | "failed", realId?: string) => {
-    setOptimisticMessages(prev => 
-      prev.map(msg => 
-        msg._id === tempId 
-          ? { ...msg, status, _id: realId || msg._id }
-          : msg
-      )
-    );
-  }, []);
-  
-  // 移除已确认的乐观消息
-  const removeOptimisticMessage = useCallback((tempId: string) => {
-    setOptimisticMessages(prev => prev.filter(msg => msg._id !== tempId));
-  }, []);
-  
   // 合并真实消息和乐观消息
   const allMessages = [...realMessages, ...optimisticMessages]
     .sort((a, b) => a.createdAt - b.createdAt);
@@ -468,259 +408,111 @@ export function useOptimisticMessages(realMessages: any[] = []) {
   return {
     allMessages,
     addOptimisticMessage,
-    updateOptimisticMessage,
-    removeOptimisticMessage,
+    // ... 其他方法
   };
 }
 ```
 
-## 5. 好友系统集成
-
-### 5.1 好友请求处理
+### 4.2 长按操作功能
 
 ```typescript
-// apps/native/hooks/useFriendRequests.ts
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { convexQuery, useConvexMutation } from '@convex-dev/react-query';
-import { useCallback } from 'react';
-import { api } from '@chat-app/backend/convex/_generated/api';
-
-export function useFriendRequests(currentUserId: string) {
-  // 获取收到的好友请求
-  const { data: receivedRequests, isPending: isLoadingReceived } = useQuery(
-    convexQuery(api.v1.users.getReceivedFriendRequests, {
-      userId: currentUserId,
-    })
-  );
-  
-  // 发送好友请求
-  const { mutateAsync: sendFriendRequestMutation, isPending: isSendFriendRequestPending } = useMutation({
-    mutationFn: useConvexMutation(api.v1.users.sendFriendRequest)
-  });
-  
-  // 响应好友请求
-  const { mutateAsync: respondToRequestMutation, isPending: isRespondingToRequest } = useMutation({
-    mutationFn: useConvexMutation(api.v1.users.respondToFriendRequest)
-  });
-  
-  // 发送好友请求
-  const sendFriendRequest = useCallback(async (toEmail: string, message?: string) => {
-    try {
-      const result = await sendFriendRequestMutation({
-        fromUserId: currentUserId,
-        toEmail,
-        message,
-      });
-      return result;
-    } catch (error) {
-      console.error('Failed to send friend request:', error);
-      throw error;
-    }
-  }, [currentUserId, sendFriendRequestMutation]);
-  
-  // 接受好友请求
-  const acceptFriendRequest = useCallback(async (requestId: string) => {
-    try {
-      await respondToRequestMutation({
-        requestId,
-        userId: currentUserId,
-        action: "accept",
-      });
-    } catch (error) {
-      console.error('Failed to accept friend request:', error);
-      throw error;
-    }
-  }, [currentUserId, respondToRequestMutation]);
-  
-  // 拒绝好友请求
-  const rejectFriendRequest = useCallback(async (requestId: string) => {
-    try {
-      await respondToRequestMutation({
-        requestId,
-        userId: currentUserId,
-        action: "reject",
-      });
-    } catch (error) {
-      console.error('Failed to reject friend request:', error);
-      throw error;
-    }
-  }, [currentUserId, respondToRequestMutation]);
-  
-  return {
-    receivedRequests: receivedRequests || [],
-    isLoadingReceived,
-    sendFriendRequest,
-    acceptFriendRequest,
-    rejectFriendRequest,
-    isSendFriendRequestPending,
-    isRespondingToRequest,
-  };
-}
-```
-
-### 5.2 好友列表管理
-
-```typescript
-// apps/native/hooks/useFriends.ts
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { convexQuery, useConvexMutation } from '@convex-dev/react-query';
-import { useCallback } from 'react';
-import { api } from '@chat-app/backend/convex/_generated/api';
-
-export function useFriends(currentUserId: string) {
-  // 获取好友列表
-  const { data: friends, isPending: isLoadingFriends } = useQuery(
-    convexQuery(api.v1.users.getFriendsList, {
-      userId: currentUserId,
-    })
-  );
-  
-  // 删除好友
-  const { mutateAsync: removeFriendMutation, isPending: isRemovingFriend } = useMutation({
-    mutationFn: useConvexMutation(api.v1.users.removeFriend)
-  });
-  
-  // 检查好友关系状态
-  const { mutateAsync: checkFriendshipMutation } = useMutation({
-    mutationFn: useConvexMutation(api.v1.users.checkFriendshipStatus)
-  });
-  
-  // 删除好友
-  const removeFriend = useCallback(async (friendId: string) => {
-    try {
-      await removeFriendMutation({
-        userId: currentUserId,
-        friendId,
-      });
-    } catch (error) {
-      console.error('Failed to remove friend:', error);
-      throw error;
-    }
-  }, [currentUserId, removeFriendMutation]);
-  
-  // 检查与某用户的关系状态
-  const checkFriendshipStatus = useCallback(async (targetUserId: string) => {
-    try {
-      const status = await checkFriendshipMutation({
-        currentUserId,
-        targetUserId,
-      });
-      return status;
-    } catch (error) {
-      console.error('Failed to check friendship status:', error);
-      throw error;
-    }
-  }, [currentUserId, checkFriendshipMutation]);
-  
-  return {
-    friends: friends || [],
-    isLoadingFriends,
-    removeFriend,
-    checkFriendshipStatus,
-    isRemovingFriend,
-  };
-}
-```
-
-## 6. 消息操作功能
-
-### 6.1 消息长按菜单
-
-```typescript
-// apps/native/components/chat/MessageActions.tsx
-import React from 'react';
-import { View, Alert } from 'react-native';
-import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { 
-  Copy, 
-  Reply, 
-  Forward, 
-  Delete, 
-  Info,
-  Star 
-} from 'lucide-react-native';
-
-interface MessageActionsProps {
-  message: any;
-  isOwn: boolean;
-  onCopy: () => void;
-  onReply: () => void;
-  onForward: () => void;
-  onDelete: () => void;
-  onInfo: () => void;
-  onFavorite: () => void;
-  onClose: () => void;
-}
-
-export function MessageActions({
+// 🚧 待实现: apps/native/components/chat/MessageLongPress.tsx
+export function MessageLongPress({
   message,
   isOwn,
-  onCopy,
   onReply,
-  onForward,
   onDelete,
-  onInfo,
-  onFavorite,
+  onRetry,
   onClose,
-}: MessageActionsProps) {
-  const handleDelete = () => {
-    Alert.alert(
-      '删除消息',
-      '确定要删除这条消息吗？',
-      [
-        { text: '取消', style: 'cancel' },
-        { text: '删除', style: 'destructive', onPress: onDelete },
-      ]
-    );
+}: MessageLongPressProps) {
+  
+  const handleCopy = () => {
+    Clipboard.setString(message.content);
+    onClose();
   };
   
+  // iOS 原生 ActionSheet
+  if (Platform.OS === 'ios') {
+    const options = ['复制', '回复'];
+    if (message.status === 'failed' && onRetry) options.push('重试发送');
+    if (isOwn) options.push('删除消息');
+    options.push('取消');
+    
+    ActionSheetIOS.showActionSheetWithOptions({
+      options,
+      cancelButtonIndex: options.length - 1,
+    }, (buttonIndex) => {
+      // 处理用户选择
+    });
+    return null;
+  }
+  
+  // Android 自定义菜单
   return (
-    <View className="bg-background border border-border rounded-lg p-2 shadow-lg">
-      <View className="flex-row flex-wrap">
-        <Button variant="ghost" size="sm" onPress={onCopy} className="m-1">
-          <Copy size={16} className="mr-2" />
-          <Text>复制</Text>
+    <View className="bg-background border border-border rounded-lg p-2">
+      <Button variant="ghost" size="sm" onPress={handleCopy}>
+        <Copy size={16} />
+        <Text>复制</Text>
+      </Button>
+      
+      <Button variant="ghost" size="sm" onPress={() => onReply(message)}>
+        <Reply size={16} />
+        <Text>回复</Text>
+      </Button>
+      
+      {message.status === 'failed' && onRetry && (
+        <Button variant="ghost" size="sm" onPress={() => onRetry(message._id)}>
+          <RotateCcw size={16} />
+          <Text>重试发送</Text>
         </Button>
-        
-        <Button variant="ghost" size="sm" onPress={onReply} className="m-1">
-          <Reply size={16} className="mr-2" />
-          <Text>回复</Text>
+      )}
+      
+      {isOwn && (
+        <Button variant="ghost" size="sm" onPress={() => onDelete(message._id)}>
+          <Delete size={16} className="text-destructive" />
+          <Text className="text-destructive">删除</Text>
         </Button>
-        
-        <Button variant="ghost" size="sm" onPress={onForward} className="m-1">
-          <Forward size={16} className="mr-2" />
-          <Text>转发</Text>
-        </Button>
-        
-        <Button variant="ghost" size="sm" onPress={onFavorite} className="m-1">
-          <Star size={16} className="mr-2" />
-          <Text>收藏</Text>
-        </Button>
-        
-        <Button variant="ghost" size="sm" onPress={onInfo} className="m-1">
-          <Info size={16} className="mr-2" />
-          <Text>详情</Text>
-        </Button>
-        
-        {isOwn && (
-          <Button variant="ghost" size="sm" onPress={handleDelete} className="m-1">
-            <Delete size={16} className="mr-2 text-destructive" />
-            <Text className="text-destructive">删除</Text>
-          </Button>
-        )}
-      </View>
+      )}
     </View>
   );
 }
 ```
 
-### 6.2 消息回复功能
+### 4.3 消息回复功能
 
 ```typescript
-// apps/native/hooks/useMessageReply.ts
-import { useState, useCallback } from 'react';
+// 🚧 待实现: apps/native/components/chat/ReplyPreview.tsx
+export function ReplyPreview({ message, onCancel }: ReplyPreviewProps) {
+  const truncateContent = (content: string, maxLength: number = 50) => {
+    if (content.length <= maxLength) return content;
+    return content.slice(0, maxLength) + '...';
+  };
+  
+  return (
+    <View className="bg-muted/30 border-l-4 border-primary px-3 py-2 mx-4 mb-2 rounded-r-md">
+      <View className="flex-row items-center justify-between">
+        <View className="flex-1 mr-2">
+          <Text className="text-primary font-medium text-sm mb-1">
+            回复 {message.sender?.displayName || '未知用户'}
+          </Text>
+          <Text 
+            numberOfLines={1} 
+            ellipsizeMode="tail"
+            className="text-muted-foreground text-sm"
+          >
+            {truncateContent(message.content)}
+          </Text>
+        </View>
+        
+        <Pressable onPress={onCancel} className="p-1">
+          <X size={16} className="text-muted-foreground" />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
 
+// 🚧 待实现: apps/native/hooks/useMessageReply.ts
 export function useMessageReply() {
   const [replyingTo, setReplyingTo] = useState<any>(null);
   
@@ -732,373 +524,50 @@ export function useMessageReply() {
     setReplyingTo(null);
   }, []);
   
-  const sendReply = useCallback(async (content: string, sendMessageFn: any) => {
-    if (!replyingTo) return;
-    
-    try {
-      await sendMessageFn(content, {
-        replyToId: replyingTo._id,
-      });
-      setReplyingTo(null);
-    } catch (error) {
-      console.error('Failed to send reply:', error);
-      throw error;
-    }
-  }, [replyingTo]);
-  
   return {
     replyingTo,
     startReply,
     cancelReply,
-    sendReply,
     isReplying: !!replyingTo,
   };
 }
 ```
 
-## 7. 输入增强功能
+## 5. 实现步骤建议
 
-### 7.1 输入建议和表情
+### 第一步: 实现乐观更新机制
+1. 创建 `useOptimisticMessages` hook
+2. 修改 `useChat` hook 集成乐观更新
+3. 更新 `ChatScreen` 使用新的 hook
+4. 实现失败重试功能
 
-```typescript
-// apps/native/components/chat/input/MessageInputEnhanced.tsx
-import React, { useState, useCallback } from 'react';
-import { View } from 'react-native';
-import { MessageInput } from '../MessageInput';
-import { EmojiPicker } from './EmojiPicker';
-import { InputSuggestions } from './InputSuggestions';
+### 第二步: 实现长按操作功能
+1. 创建 `MessageLongPress` 组件
+2. 在 `MessageBubble` 中集成长按处理
+3. 实现复制、删除功能
+4. 添加iOS/Android平台适配
 
-interface MessageInputEnhancedProps {
-  onSendMessage: (content: string) => void;
-  replyingTo?: any;
-  onCancelReply?: () => void;
-  disabled?: boolean;
-}
-
-export function MessageInputEnhanced({
-  onSendMessage,
-  replyingTo,
-  onCancelReply,
-  disabled,
-}: MessageInputEnhancedProps) {
-  const [showEmoji, setShowEmoji] = useState(false);
-  const [message, setMessage] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  
-  // 处理@用户建议
-  const handleTextChange = useCallback((text: string) => {
-    setMessage(text);
-    
-    // 检测@符号并显示建议
-    const lastAtIndex = text.lastIndexOf('@');
-    if (lastAtIndex !== -1) {
-      const query = text.slice(lastAtIndex + 1);
-      if (query.length > 0) {
-        // 搜索用户建议
-        // setSuggestions(searchUsers(query));
-      }
-    } else {
-      setSuggestions([]);
-    }
-  }, []);
-  
-  const handleEmojiSelect = useCallback((emoji: string) => {
-    setMessage(prev => prev + emoji);
-    setShowEmoji(false);
-  }, []);
-  
-  const handleSend = useCallback((content: string) => {
-    onSendMessage(content);
-    setMessage('');
-    setSuggestions([]);
-  }, [onSendMessage]);
-  
-  return (
-    <View>
-      {/* 回复预览 */}
-      {replyingTo && (
-        <ReplyPreview
-          message={replyingTo}
-          onCancel={onCancelReply}
-        />
-      )}
-      
-      {/* 用户建议 */}
-      {suggestions.length > 0 && (
-        <InputSuggestions
-          suggestions={suggestions}
-          onSelect={(user) => {
-            // 替换@查询为@用户名
-            const lastAtIndex = message.lastIndexOf('@');
-            const newMessage = message.slice(0, lastAtIndex + 1) + user + ' ';
-            setMessage(newMessage);
-            setSuggestions([]);
-          }}
-        />
-      )}
-      
-      {/* 主输入框 */}
-      <MessageInput
-        value={message}
-        onChangeText={handleTextChange}
-        onSendMessage={handleSend}
-        disabled={disabled}
-        onEmojiPress={() => setShowEmoji(!showEmoji)}
-      />
-      
-      {/* 表情选择器 */}
-      {showEmoji && (
-        <EmojiPicker
-          onEmojiSelect={handleEmojiSelect}
-          onClose={() => setShowEmoji(false)}
-        />
-      )}
-    </View>
-  );
-}
-```
-
-## 8. 错误处理和重试机制
-
-### 8.1 消息发送失败处理
-
-```typescript
-// apps/native/hooks/useMessageRetry.ts
-import { useCallback, useState } from 'react';
-
-export function useMessageRetry() {
-  const [retryingMessages, setRetryingMessages] = useState<Set<string>>(new Set());
-  
-  const retryMessage = useCallback(async (
-    messageId: string,
-    content: string,
-    sendMessageFn: (content: string) => Promise<any>
-  ) => {
-    if (retryingMessages.has(messageId)) return;
-    
-    setRetryingMessages(prev => new Set(prev).add(messageId));
-    
-    try {
-      await sendMessageFn(content);
-      // 成功后移除重试状态
-      setRetryingMessages(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(messageId);
-        return newSet;
-      });
-    } catch (error) {
-      console.error('Retry failed:', error);
-      setRetryingMessages(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(messageId);
-        return newSet;
-      });
-      throw error;
-    }
-  }, [retryingMessages]);
-  
-  const isRetrying = useCallback((messageId: string) => {
-    return retryingMessages.has(messageId);
-  }, [retryingMessages]);
-  
-  return {
-    retryMessage,
-    isRetrying,
-  };
-}
-```
-
-### 8.2 网络状态处理
-
-```typescript
-// apps/native/hooks/useNetworkStatus.ts
-import { useState, useEffect } from 'react';
-import NetInfo from '@react-native-community/netinfo';
-
-export function useNetworkStatus() {
-  const [isOnline, setIsOnline] = useState(true);
-  const [connectionType, setConnectionType] = useState<string>('unknown');
-  
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
-      setIsOnline(!!state.isConnected && !!state.isInternetReachable);
-      setConnectionType(state.type);
-    });
-    
-    return unsubscribe;
-  }, []);
-  
-  return {
-    isOnline,
-    connectionType,
-    isWifi: connectionType === 'wifi',
-    isCellular: connectionType === 'cellular',
-  };
-}
-```
-
-## 9. 性能优化策略
-
-### 9.1 消息虚拟化
-
-```typescript
-// apps/native/components/chat/VirtualizedMessageList.tsx
-import React, { useMemo } from 'react';
-import { LegendList } from '@legendapp/list';
-
-interface VirtualizedMessageListProps {
-  messages: any[];
-  currentUserId: string;
-  onLoadMore: () => void;
-  onViewableItemsChanged: (info: any) => void;
-}
-
-export function VirtualizedMessageList({
-  messages,
-  currentUserId,
-  onLoadMore,
-  onViewableItemsChanged,
-}: VirtualizedMessageListProps) {
-  // 优化渲染项
-  const renderItem = useMemo(() => ({ item: message, index }: any) => {
-    return (
-      <MessageBubble
-        key={message._id}
-        message={message}
-        isOwn={message.senderId === currentUserId}
-        senderInfo={message.sender}
-        showAvatar={shouldShowAvatar(message, index, messages)}
-      />
-    );
-  }, [messages, currentUserId]);
-  
-  // 计算是否显示头像
-  const shouldShowAvatar = (message: any, index: number, allMessages: any[]) => {
-    if (message.senderId === currentUserId) return false;
-    
-    const prevMessage = allMessages[index - 1];
-    return !prevMessage || prevMessage.senderId !== message.senderId;
-  };
-  
-  return (
-    <LegendList
-      data={messages}
-      renderItem={renderItem}
-      estimatedItemSize={80}
-      onEndReached={onLoadMore}
-      onViewableItemsChanged={onViewableItemsChanged}
-      viewabilityConfig={{
-        itemVisiblePercentThreshold: 50,
-        minimumViewTime: 1000,
-      }}
-      removeClippedSubviews={true}
-      maxToRenderPerBatch={10}
-      windowSize={21}
-    />
-  );
-}
-```
-
-### 9.2 消息预处理
-
-```typescript
-// apps/native/utils/messageProcessor.ts
-export class MessageProcessor {
-  // 消息分组（按日期）
-  static groupMessagesByDate(messages: any[]) {
-    const groups: Record<string, any[]> = {};
-    
-    messages.forEach(message => {
-      const date = new Date(message.createdAt).toDateString();
-      if (!groups[date]) {
-        groups[date] = [];
-      }
-      groups[date].push(message);
-    });
-    
-    return groups;
-  }
-  
-  // 消息去重
-  static deduplicateMessages(messages: any[]) {
-    const seen = new Set();
-    return messages.filter(message => {
-      if (seen.has(message._id)) {
-        return false;
-      }
-      seen.add(message._id);
-      return true;
-    });
-  }
-  
-  // 合并连续的系统消息
-  static mergeSystemMessages(messages: any[]) {
-    const result = [];
-    let currentGroup: any[] = [];
-    
-    for (const message of messages) {
-      if (message.type === 'system') {
-        currentGroup.push(message);
-      } else {
-        if (currentGroup.length > 0) {
-          // 合并系统消息
-          result.push(this.createMergedSystemMessage(currentGroup));
-          currentGroup = [];
-        }
-        result.push(message);
-      }
-    }
-    
-    if (currentGroup.length > 0) {
-      result.push(this.createMergedSystemMessage(currentGroup));
-    }
-    
-    return result;
-  }
-  
-  private static createMergedSystemMessage(messages: any[]) {
-    return {
-      _id: `merged-${messages[0]._id}`,
-      type: 'system',
-      content: messages.map(m => m.content).join('\n'),
-      createdAt: messages[0].createdAt,
-      isMerged: true,
-    };
-  }
-}
-```
+### 第三步: 实现消息回复功能
+1. 创建 `useMessageReply` hook
+2. 创建 `ReplyPreview` 组件
+3. 修改 `MessageInput` 支持回复模式
+4. 更新后端API支持回复消息
 
 ---
 
 ## 总结
 
-Phase 3实现了聊天系统的核心业务逻辑，采用 **TanStack React Query + Convex** 架构：
+当前聊天功能已具备扎实的基础架构，采用 **Convex React Hooks + NativeWind + 组件化设计**：
 
-### 🏗️ 架构优势
-- **TanStack React Query**: 提供强大的数据缓存、同步和状态管理
-- **Convex Integration**: 通过 `@convex-dev/react-query` 实现无缝集成
-- **统一API模式**: 所有API调用使用 `api.v1.**` 格式确保一致性
+### ✅ 已实现的优势
+- **实时数据同步**: Convex hooks 提供开箱即用的实时性
+- **性能优化**: FlatList优化、组件memo、合理的状态管理
+- **用户体验**: 自动滚动、键盘处理、消息状态显示
+- **代码质量**: TypeScript类型安全、清晰的组件分层
 
-### 🚀 核心功能
-- **实时通信**: 基于Convex的实时消息监听和推送
-- **好友系统**: 完整的好友请求、管理和状态检查
-- **状态管理**: 使用 `useQuery` 和 `useMutation` 的现代状态管理
-- **乐观更新**: 提升用户体验的即时反馈机制
-- **消息操作**: 回复、转发、删除等丰富的交互功能
-- **性能优化**: 虚拟化列表和智能消息预处理
-- **错误处理**: 完善的网络状态监听和重试机制
+### 🎯 待实现功能的价值
+- **乐观更新**: 提升消息发送的即时反馈体验
+- **长按操作**: 增强消息交互功能
+- **回复功能**: 支持更丰富的对话场景
 
-### 📋 技术模式
-```typescript
-// 标准查询模式
-const { data, isPending } = useQuery(
-  convexQuery(api.v1.module.function, params)
-);
-
-// 标准变更模式  
-const { mutateAsync, isPending } = useMutation({
-  mutationFn: useConvexMutation(api.v1.module.function)
-});
-```
-
-这种架构为聊天系统提供了现代化、可扩展和高性能的技术基础。
+这种渐进式的实现方式确保了代码的稳定性和可维护性。

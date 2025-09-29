@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -19,8 +19,6 @@ export default function ChatScreen() {
   const currentUser = useQuery(api.auth.getCurrentUser);
   const currentUserId = currentUser?._id || '';
 
-
-
   const {
     conversation,
     messages,
@@ -33,6 +31,37 @@ export default function ChatScreen() {
     conversationId: conversationId as Id<"conversations">,
     userId: currentUserId
   });
+
+  // Transform participants data to match ChatHeader interface
+  const transformedParticipants = useMemo(() => {
+    return (conversation?.participants || [])
+      .filter((p: any) => p != null)
+      .map((p: any) => ({
+        userId: p.userId || p._id,
+        displayName: p.displayName || '未知用户',
+        avatar: p.avatar,
+        presence: p.presence || 'offline' as const,
+      }));
+  }, [conversation?.participants]);
+
+  // Transform messages data to match ChatMessageList interface
+  const transformedMessages = useMemo(() => {
+    return messages.map((msg) => ({
+      _id: msg._id,
+      content: msg.content,
+      senderId: msg.senderId,
+      type: msg.type || 'text',
+      status: (msg.status === 'sending' || msg.status === 'sent' || msg.status === 'delivered' || msg.status === 'read' || msg.status === 'failed')
+        ? msg.status
+        : 'sent' as any,
+      createdAt: msg._creationTime,
+      sender: {
+        userId: msg.sender?.userId || msg.senderId,
+        displayName: msg.sender?.displayName || '未知用户',
+        avatar: msg.sender?.avatar,
+      },
+    }));
+  }, [messages]);
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || !conversationId) return;
@@ -72,32 +101,6 @@ export default function ChatScreen() {
     );
   }
 
-  // Transform participants data to match ChatHeader interface
-  const transformedParticipants = (conversation.participants || [])
-    .filter((p: any) => p != null)
-    .map((p: any) => ({
-      userId: p.userId || p._id,
-      displayName: p.displayName || '未知用户',
-      avatar: p.avatar,
-      presence: p.presence || 'offline' as const,
-    }));
-
-  // Transform messages data to match ChatMessageList interface
-  const transformedMessages = messages.map((msg: any) => ({
-    _id: msg._id,
-    content: msg.content,
-    senderId: msg.senderId,
-    type: msg.type || 'text',
-    status: (msg.status === 'sending' || msg.status === 'sent' || msg.status === 'delivered' || msg.status === 'read' || msg.status === 'failed')
-      ? msg.status
-      : 'sent' as const,
-    createdAt: msg.createdAt,
-    sender: {
-      userId: msg.sender?.userId || msg.senderId,
-      displayName: msg.sender?.displayName || '未知用户',
-      avatar: msg.sender?.avatar,
-    },
-  }));
 
   return (
     <KeyboardProvider>

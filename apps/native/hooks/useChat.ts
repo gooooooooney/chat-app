@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@chat-app/backend/convex/_generated/api';
 import { Id } from '@chat-app/backend/convex/_generated/dataModel';
@@ -50,7 +50,7 @@ export function useChat({ conversationId, userId }: UseChatProps) {
     }
   };
 
-  const handleMarkAsRead = async (messageIds: Id<"messages">[]) => {
+  const handleMarkAsRead = useCallback(async (messageIds: Id<"messages">[]) => {
     try {
       await markAsRead({
         conversationId,
@@ -61,20 +61,25 @@ export function useChat({ conversationId, userId }: UseChatProps) {
       console.error('Failed to mark messages as read:', err);
       // 标记已读失败不需要显示错误给用户
     }
-  };
+  }, [markAsRead, conversationId, userId]);
+
+  // 跟踪已经标记为已读的消息，避免重复标记
+  const markedAsReadRef = useRef<Set<string>>(new Set());
 
   // 自动标记可见消息为已读
   useEffect(() => {
     if (messagesData?.messages && messagesData.messages.length > 0) {
       const unreadMessages = messagesData.messages
-        .filter((msg: any) => msg.senderId !== userId)
+        .filter((msg: any) => msg.senderId !== userId && !markedAsReadRef.current.has(msg._id))
         .map((msg: any) => msg._id as Id<"messages">);
 
       if (unreadMessages.length > 0) {
+        // 记录这些消息已经被标记，避免重复
+        unreadMessages.forEach(id => markedAsReadRef.current.add(id));
         handleMarkAsRead(unreadMessages);
       }
     }
-  }, [messagesData?.messages, userId]);
+  }, [messagesData?.messages?.length, userId, handleMarkAsRead]);
 
   return {
     conversation,

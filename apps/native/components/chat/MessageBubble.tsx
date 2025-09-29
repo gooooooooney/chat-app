@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/text';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { Check, CheckCheck, Clock, XCircle } from 'lucide-react-native';
+import { Icon } from '../ui/icon';
 
 interface MessageBubbleProps {
   message: {
@@ -35,30 +36,30 @@ export const MessageBubble = React.memo(function MessageBubbleComponent({
 }: MessageBubbleProps) {
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('zh-CN', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('zh-CN', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false 
+      hour12: false
     });
   };
-  
+
   const getStatusIcon = () => {
     switch (message.status) {
       case 'sending':
-        return <Clock size={12} className="text-muted-foreground" />;
+        return <Icon as={Clock} size={12} className="text-muted-foreground" />;
       case 'sent':
-        return <Check size={12} className="text-muted-foreground" />;
+        return <Icon as={Check} size={12} className="text-muted-foreground" />;
       case 'delivered':
-        return <CheckCheck size={12} className="text-muted-foreground" />;
+        return <Icon as={CheckCheck} size={12} className="text-muted-foreground" />;
       case 'read':
-        return <CheckCheck size={12} className="text-primary" />;
+        return <Icon as={CheckCheck} size={12} className="text-primary-foreground" />;
       case 'failed':
-        return <XCircle size={12} className="text-destructive" />;
+        return <Icon as={XCircle} size={12} className="text-destructive" />;
       default:
         return null;
     }
   };
-  
+
   return (
     <Pressable
       onPress={onPress}
@@ -75,10 +76,10 @@ export const MessageBubble = React.memo(function MessageBubbleComponent({
       {!isOwn && (
         <View className="mr-2 mt-1">
           {showAvatar ? (
-            <Avatar className="size-8">
-              <AvatarImage 
-                source={{ uri: senderInfo?.avatar }} 
-                alt={senderInfo?.displayName}
+            <Avatar alt={senderInfo?.displayName}
+              className="size-8">
+              <AvatarImage
+                source={{ uri: senderInfo?.avatar }}
               />
               <AvatarFallback>
                 <Text className="text-xs font-medium">
@@ -91,12 +92,12 @@ export const MessageBubble = React.memo(function MessageBubbleComponent({
           )}
         </View>
       )}
-      
+
       {/* 消息内容容器 */}
       <View className={cn(
         "max-w-[75%] rounded-2xl px-3 py-2",
-        isOwn 
-          ? "bg-primary ml-auto" 
+        isOwn
+          ? "bg-primary ml-auto"
           : "bg-muted mr-auto"
       )}>
         {/* 发送者名称(群聊中对方消息显示) */}
@@ -105,7 +106,7 @@ export const MessageBubble = React.memo(function MessageBubbleComponent({
             {senderInfo.displayName}
           </Text>
         )}
-        
+
         {/* 消息内容 */}
         <Text className={cn(
           "text-base leading-5",
@@ -113,7 +114,7 @@ export const MessageBubble = React.memo(function MessageBubbleComponent({
         )}>
           {message.content}
         </Text>
-        
+
         {/* 消息元信息 */}
         <View className="flex-row items-center justify-between mt-1 min-h-[16px]">
           <Text className={cn(
@@ -122,7 +123,7 @@ export const MessageBubble = React.memo(function MessageBubbleComponent({
           )}>
             {formatTime(message.createdAt)}
           </Text>
-          
+
           {/* 消息状态(仅自己的消息) */}
           {isOwn && (
             <View className="ml-2">
@@ -131,7 +132,7 @@ export const MessageBubble = React.memo(function MessageBubbleComponent({
           )}
         </View>
       </View>
-      
+
       {/* 占位，保持布局平衡 */}
       {isOwn && <View className="w-8" />}
     </Pressable>

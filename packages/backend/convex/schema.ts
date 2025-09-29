@@ -95,8 +95,6 @@ export default defineSchema({
     lastMessageAt: v.optional(v.number()),
     // 最后消息内容预览
     lastMessagePreview: v.optional(v.string()),
-    // 创建时间
-    createdAt: v.number(),
     // 更新时间
     updatedAt: v.number(),
   })
@@ -152,11 +150,9 @@ export default defineSchema({
     deleted: v.optional(v.boolean()),
     // 删除时间
     deletedAt: v.optional(v.number()),
-    // 创建时间
-    createdAt: v.number(),
   })
-    .index("by_conversation", ["conversationId", "createdAt"])
-    .index("by_sender", ["senderId", "createdAt"])
+    .index("by_conversation", ["conversationId"])
+    .index("by_sender", ["senderId"])
     .index("by_conversation_type", ["conversationId", "type"])
     .index("by_replyTo", ["replyToId"]),
 
@@ -185,8 +181,6 @@ export default defineSchema({
     duration: v.optional(v.number()),
     // 上传状态
     uploadStatus: v.optional(UploadStatus),
-    // 创建时间
-    createdAt: v.number(),
   })
     .index("by_message", ["messageId"])
     .index("by_type", ["type"])
@@ -219,8 +213,6 @@ export default defineSchema({
     // 无论是alice添加bob还是bob添加alice，最终都存储为同一条记录
     user2Id: v.string(),
 
-    // 成为好友的时间
-    createdAt: v.number(),
   })
     // 按user1Id查询：快速找到某个用户作为"较小ID"的所有好友关系
     .index("by_user1", ["user1Id"])
@@ -239,8 +231,6 @@ export default defineSchema({
     status: FriendRequestStatus,
     // 请求消息
     message: v.optional(v.string()),
-    // 创建时间
-    createdAt: v.number(),
     // 更新时间（接受/拒绝时）
     updatedAt: v.optional(v.number()),
   })

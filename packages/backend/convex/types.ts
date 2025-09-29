@@ -83,7 +83,6 @@ export interface FriendRequestWithSender {
   toUserId: string;
   status: FriendRequestStatus;
   message?: string;
-  createdAt: number;
   updatedAt?: number;
   sender: UserProfileWithId | null;
 }

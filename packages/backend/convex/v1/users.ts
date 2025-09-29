@@ -112,7 +112,6 @@ export const sendFriendRequest = mutation({
       await ctx.db.insert("friendships", {
         user1Id,  // 字典序较小的用户ID
         user2Id,  // 字典序较大的用户ID
-        createdAt: Date.now(),
       });
 
       return {
@@ -128,7 +127,6 @@ export const sendFriendRequest = mutation({
       toUserId: targetUser.userId,
       status: "pending",
       message: args.message,
-      createdAt: Date.now(),
     });
 
     return {
@@ -206,7 +204,6 @@ export const respondToFriendRequest = mutation({
       await ctx.db.insert("friendships", {
         user1Id,  // 字典序较小的用户ID
         user2Id,  // 字典序较大的用户ID  
-        createdAt: Date.now(),
       });
     }
 
@@ -377,7 +374,7 @@ export const getFriendDetail = query({
       // 添加好友关系信息
       friendshipInfo: {
         friendshipId: friendship._id,
-        friendsSince: friendship.createdAt,
+        friendsSince: friendship._creationTime,
       },
     };
   },

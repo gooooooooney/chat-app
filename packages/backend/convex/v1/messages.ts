@@ -19,24 +19,23 @@ export const getConversationMessages = query({
     try {
       // 验证用户访问权限
       await verifyConversationAccess(ctx, userId, conversationId);
-
       let query = ctx.db
         .query("messages")
         .withIndex("by_conversation", (q) =>
           q.eq("conversationId", conversationId)
         )
-        .filter((q) => q.eq(q.field("deleted"), undefined));
+        .filter((q) => q.eq(q.field("deleted"), false));
 
       // 如果有cursor，从指定位置开始查询
       if (cursor) {
         const cursorTimestamp = parseInt(cursor);
-        query = query.filter((q) => q.lt(q.field("createdAt"), cursorTimestamp));
+        query = query.filter((q) => q.lt(q.field("_creationTime"), cursorTimestamp));
       }
+
 
       const messages = await query
         .order("desc")
         .take(limit);
-
       // 获取发送者信息和回复消息信息
       const messagesWithDetails = await Promise.all(
         messages.map(async (message) => {
@@ -120,12 +119,13 @@ export const getConversationMessages = query({
         })
       );
 
+
       // 返回时间正序（最旧的在前）
       const sortedMessages = messagesWithDetails.reverse();
 
       // 生成下一页的cursor
       const nextCursor = messages.length === limit
-        ? messages[messages.length - 1].createdAt.toString()
+        ? messages[messages.length - 1]._creationTime.toString()
         : null;
 
       return {
@@ -186,7 +186,6 @@ export const sendMessage = mutation({
         replyToId,
         edited: false,
         deleted: false,
-        createdAt: now,
       });
 
       // 更新会话最后消息时间和预览
@@ -416,7 +415,7 @@ export const getMessageStats = query({
         .withIndex("by_conversation", (q) =>
           q.eq("conversationId", conversationId)
         )
-        .filter((q) => q.eq(q.field("deleted"), undefined))
+        .filter((q) => q.eq(q.field("deleted"), false))
         .collect();
 
       // 获取未读消息数
@@ -427,7 +426,7 @@ export const getMessageStats = query({
         )
         .filter((q) =>
           q.and(
-            q.eq(q.field("deleted"), undefined),
+            q.eq(q.field("deleted"), false),
             q.neq(q.field("senderId"), userId)
           )
         )
@@ -454,7 +453,7 @@ export const getMessageStats = query({
         totalCount: totalMessages.length,
         unreadCount,
         myMessageCount: myMessages.length,
-        lastMessageAt: Math.max(...totalMessages.map(m => m.createdAt), 0),
+        lastMessageAt: Math.max(...totalMessages.map(m => m._creationTime), 0),
       };
     } catch (error) {
       console.error("Failed to get message stats:", error);
@@ -490,7 +489,7 @@ export const searchMessages = query({
         .withIndex("by_conversation", (q) =>
           q.eq("conversationId", conversationId)
         )
-        .filter((q) => q.eq(q.field("deleted"), undefined))
+        .filter((q) => q.eq(q.field("deleted"), false))
         .collect();
 
       // 简单的文本搜索
@@ -498,7 +497,7 @@ export const searchMessages = query({
         .filter(message =>
           message.content.toLowerCase().includes(searchQuery.toLowerCase())
         )
-        .sort((a, b) => b.createdAt - a.createdAt)
+        .sort((a, b) => b._creationTime - a._creationTime)
         .slice(0, limit);
 
       // 获取发送者信息

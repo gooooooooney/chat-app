@@ -187,7 +187,6 @@ export const createConversation = mutation({
         createdBy,
         archived: false,
         lastMessageAt: now,
-        createdAt: now,
         updatedAt: now,
       });
 
@@ -221,7 +220,6 @@ export const createConversation = mutation({
           senderId: createdBy,
           content: systemMessage,
           type: "system",
-          createdAt: now,
         });
       }
 
@@ -328,7 +326,6 @@ export const addParticipants = mutation({
           senderId: addedBy,
           content: systemMessage,
           type: "system",
-          createdAt: now,
         });
 
         // 更新会话最后消息时间
@@ -391,7 +388,6 @@ export const leaveConversation = mutation({
         senderId: userId,
         content: systemMessage,
         type: "system",
-        createdAt: now,
       });
 
       // 更新会话最后消息时间

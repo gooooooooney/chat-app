@@ -2,9 +2,10 @@ import React, { useRef, useEffect } from 'react';
 import { View, FlatList } from 'react-native';
 import { MessageBubble } from './MessageBubble';
 import { Text } from '@/components/ui/text';
+import { Id } from '@chat-app/backend/convex/_generated/dataModel';
 
 interface Message {
-  _id: string;
+  _id: Id<"messages">;
   content: string;
   senderId: string;
   type: "text" | "image" | "file" | "system";

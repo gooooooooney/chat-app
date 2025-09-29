@@ -74,8 +74,8 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({ item, onPress }) => 
 					</Text>
 
 					{/* 未读消息数量徽章 */}
-					{item.unreadCount && item.unreadCount > 0 && (
-						<View className="ml-2 min-w-[20px] h-5 bg-red-500 rounded-full flex items-center justify-center px-1.5">
+					{!!item.unreadCount && item.unreadCount > 0 && (
+						<View className="ml-2 min-w-[20px] h-5 bg-red-500 rounded-full items-center justify-center px-1.5">
 							<Text className="text-xs text-white font-medium">
 								{item.unreadCount > 99 ? "99+" : item.unreadCount}
 							</Text>

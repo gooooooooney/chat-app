@@ -41,7 +41,7 @@ export const useChatData = () => {
 			}
 
 			// 计算时间显示
-			const lastMessageTime = conversation.lastMessageAt || conversation.createdAt;
+			const lastMessageTime = conversation.lastMessageAt || conversation._creationTime;
 			const timestamp = formatTime(lastMessageTime);
 
 			return {

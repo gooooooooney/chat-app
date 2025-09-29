@@ -120,7 +120,6 @@ async function createDirectConversationInternal(ctx: MutationCtx, userId1: strin
   const conversationId = await ctx.db.insert("conversations", {
     type: "direct",
     createdBy: userId1,
-    createdAt: now,
     updatedAt: now,
   });
 
@@ -175,7 +174,6 @@ export const createDirectConversation = mutation({
     const conversationId = await ctx.db.insert("conversations", {
       type: "direct",
       createdBy: args.userId1,
-      createdAt: now,
       updatedAt: now,
     });
 
@@ -229,7 +227,6 @@ export const sendMessage = mutation({
       content: args.content,
       type: args.type || "text",
       replyToId: args.replyToId,
-      createdAt: now,
     });
 
     // 更新会话的最后消息时间
@@ -281,7 +278,7 @@ export const getUserConversations = query({
 
     return conversations
       .filter((c): c is ConversationWithParticipant => c.conversation !== null)
-      .sort((a, b) => (b.conversation.lastMessageAt || b.conversation.createdAt) - (a.conversation.lastMessageAt || a.conversation.createdAt));
+      .sort((a, b) => (b.conversation.lastMessageAt || b.conversation._creationTime) - (a.conversation.lastMessageAt || a.conversation._creationTime));
   },
 });
 

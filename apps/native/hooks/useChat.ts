@@ -70,8 +70,8 @@ export function useChat({ conversationId, userId }: UseChatProps) {
   useEffect(() => {
     if (messagesData?.messages && messagesData.messages.length > 0) {
       const unreadMessages = messagesData.messages
-        .filter((msg: any) => msg.senderId !== userId && !markedAsReadRef.current.has(msg._id))
-        .map((msg: any) => msg._id as Id<"messages">);
+        .filter((msg) => msg.senderId !== userId && !markedAsReadRef.current.has(msg._id))
+        .map((msg) => msg._id as Id<"messages">);
 
       if (unreadMessages.length > 0) {
         // 记录这些消息已经被标记，避免重复

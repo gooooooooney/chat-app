@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, TextInput, KeyboardAvoidingView, Platform, TextInputContentSizeChangeEvent } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
@@ -33,7 +33,7 @@ export function MessageInput({
     }
   }, [message, disabled, onSendMessage]);
 
-  const handleContentSizeChange = (event: any) => {
+  const handleContentSizeChange = (event: TextInputContentSizeChangeEvent) => {
     const { height } = event.nativeEvent.contentSize;
     setInputHeight(Math.min(Math.max(height, 40), 120)); // 限制高度 40-120
   };

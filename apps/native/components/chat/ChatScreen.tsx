@@ -35,8 +35,8 @@ export default function ChatScreen() {
   // Transform participants data to match ChatHeader interface
   const transformedParticipants = useMemo(() => {
     return (conversation?.participants || [])
-      .filter((p: any) => p != null)
-      .map((p: any) => ({
+      .filter((p) => p != null)
+      .map((p) => ({
         userId: p.userId || p._id,
         displayName: p.displayName || '未知用户',
         avatar: p.avatar,

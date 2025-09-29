@@ -139,7 +139,7 @@ export default function FriendDetailScreen() {
             <Icon as={UserIcon} size={48} className="text-muted-foreground mb-4" />
             <Text className="text-lg text-foreground mb-2">无法查看详情</Text>
             <Text className="text-muted-foreground text-center">
-              {(friendDetailError as any)?.message || "只有好友才能查看详细信息"}
+              {(friendDetailError)?.message || "只有好友才能查看详细信息"}
             </Text>
           </View>
         </Container>

@@ -28,6 +28,8 @@ export default function ContactsScreen() {
 		convexQuery(api.v1.users.getReceivedFriendRequests, userId ? { userId } : "skip")
 	);
 
+
+
 	// 当页面获得焦点时，标记联系人页面为已查看
 	useFocusEffect(
 		useCallback(() => {
@@ -83,7 +85,7 @@ export default function ContactsScreen() {
 	}, [friends]);
 
 	// 渲染好友请求项
-	const renderFriendRequest = useCallback(({ item }: LegendListRenderItemProps<any>) => {
+	const renderFriendRequest = useCallback(({ item }: LegendListRenderItemProps<NonNullable<typeof friendRequests>[number]>) => {
 		return (
 			<View className="flex-row items-center p-4 bg-card border-b border-border">
 				<View className="w-12 h-12 bg-muted rounded-full items-center justify-center mr-3">
@@ -126,20 +128,20 @@ export default function ContactsScreen() {
 	}, [router]);
 
 	// 渲染好友列表项
-	const renderFriend = useCallback(({ item }: LegendListRenderItemProps<any>) => {
+	const renderFriend = useCallback(({ item }: LegendListRenderItemProps<NonNullable<typeof friends>[number]>) => {
 		return (
-			<Pressable 
+			<Pressable
 				className="flex-row items-center p-4 bg-card border-b border-border"
-				onPress={() => handleFriendPress(item.userId)}
+				onPress={() => handleFriendPress(item!._id)}
 			>
 				<View className="w-12 h-12 bg-primary rounded-full items-center justify-center mr-3">
 					<Text className="text-primary-foreground font-bold text-lg">
-						{item.displayName?.charAt(0).toUpperCase() || "?"}
+						{item?.displayName?.charAt(0).toUpperCase() || "?"}
 					</Text>
 				</View>
 				<View className="flex-1">
 					<Text className="text-foreground font-medium">
-						{item.displayName || item.email}
+						{item?.displayName || item?.email}
 					</Text>
 					{/* <Text className="text-sm text-muted-foreground">
 						{item._id && `ID: ${item._id}`}

@@ -8,6 +8,7 @@ import { MessageInput } from './MessageInput';
 import { LoadingScreen } from './LoadingScreen';
 import { ErrorScreen } from './ErrorScreen';
 import { useChat } from '@/hooks/useChat';
+import { useOptimisticSendMessage, useRetryMessage } from '@/hooks/useOptimisticChat';
 import { Id } from '@chat-app/backend/convex/_generated/dataModel';
 import { useQuery } from 'convex/react';
 import { api } from '@chat-app/backend/convex/_generated/api';
@@ -31,6 +32,10 @@ export default function ChatScreen() {
     conversationId: conversationId as Id<"conversations">,
     userId: currentUserId
   });
+
+  // 乐观更新 hooks
+  const { mutate: optimisticSendMessage, isPending: isSending } = useOptimisticSendMessage(conversationId || '');
+  const { retryMessage } = useRetryMessage(conversationId || '');
 
   // Transform participants data to match ChatHeader interface
   const transformedParticipants = useMemo(() => {
@@ -64,12 +69,31 @@ export default function ChatScreen() {
   }, [messages]);
 
   const handleSendMessage = async (content: string) => {
-    if (!content.trim() || !conversationId) return;
+    if (!content.trim() || !conversationId || !currentUserId) return;
 
-    try {
-      await sendMessage(content);
-    } catch (err) {
-      // Error is handled in the hook
+    // 使用乐观更新发送消息
+    optimisticSendMessage({
+      senderId: currentUserId,
+      content: content.trim(),
+      type: "text",
+    });
+  };
+
+  const handleRetryMessage = (messageId: string) => {
+    // 找到失败的消息
+    const failedMessage = transformedMessages.find(msg => msg._id === messageId);
+    if (failedMessage) {
+      retryMessage({
+        _id: failedMessage._id,
+        _creationTime: failedMessage.createdAt,
+        conversationId: conversationId || '',
+        senderId: failedMessage.senderId,
+        content: failedMessage.content,
+        type: failedMessage.type,
+        status: 'failed',
+        edited: false,
+        deleted: false,
+      });
     }
   };
 
@@ -118,11 +142,12 @@ export default function ChatScreen() {
           messages={transformedMessages}
           currentUserId={currentUserId}
           hasMore={hasMore}
+          onRetryMessage={handleRetryMessage}
         />
 
         <MessageInput
           onSendMessage={handleSendMessage}
-          disabled={false}
+          disabled={isSending || !currentUserId}
         />
       </View>
     </KeyboardProvider>

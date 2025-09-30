@@ -24,6 +24,7 @@ interface ChatMessageListProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loading?: boolean;
+  onRetryMessage?: (messageId: string) => void; // 新增重试回调
 }
 
 export function ChatMessageList({
@@ -32,6 +33,7 @@ export function ChatMessageList({
   onLoadMore,
   hasMore = false,
   loading = false,
+  onRetryMessage,
 }: ChatMessageListProps) {
   const flatListRef = useRef<FlatList>(null);
 
@@ -49,6 +51,12 @@ export function ChatMessageList({
     const prevMessage = index > 0 ? messages[index - 1] : null;
     const showAvatar = !isOwn && (!prevMessage || prevMessage.senderId !== message.senderId);
 
+    const handleRetry = () => {
+      if (onRetryMessage) {
+        onRetryMessage(message._id);
+      }
+    };
+
     return (
       <MessageBubble
         key={message._id}
@@ -56,6 +64,7 @@ export function ChatMessageList({
         isOwn={isOwn}
         senderInfo={message.sender}
         showAvatar={showAvatar}
+        onRetry={handleRetry}
       />
     );
   };

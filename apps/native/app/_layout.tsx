@@ -7,7 +7,10 @@ import {
 	ThemeProvider,
 } from "@react-navigation/native";
 import { ConvexQueryClient } from "@convex-dev/react-query";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "../global.css";
@@ -45,10 +48,19 @@ const queryClient = new QueryClient({
 		queries: {
 			queryKeyHashFn: convexQueryClient.hashFn(),
 			queryFn: convexQueryClient.queryFn(),
+			gcTime: 1000 * 60 * 60 * 24, // 24小时缓存
+			staleTime: 1000 * 60 * 5,    // 5分钟内数据视为新鲜
+			networkMode: 'offlineFirst',  // 离线优先模式
 		},
 	},
 });
 convexQueryClient.connect(queryClient);
+
+// 创建 AsyncStorage 持久化器
+const persister = createAsyncStoragePersister({
+	storage: AsyncStorage,
+	key: 'chat-app-cache',
+});
 
 export default function RootLayout() {
 	const hasMounted = useRef(false);
@@ -73,7 +85,10 @@ export default function RootLayout() {
 	}
 	return (
 		<ConvexBetterAuthProvider client={convex} authClient={authClient}>
-			<QueryClientProvider client={queryClient}>
+			<PersistQueryClientProvider 
+				client={queryClient} 
+				persistOptions={{ persister }}
+			>
 				<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
 					<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
 					<GestureHandlerRootView style={{ flex: 1 }}>
@@ -84,7 +99,7 @@ export default function RootLayout() {
 						</KeyboardProvider>
 					</GestureHandlerRootView>
 				</ThemeProvider>
-			</QueryClientProvider>
+			</PersistQueryClientProvider>
 		</ConvexBetterAuthProvider>
 	);
 }

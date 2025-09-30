@@ -24,6 +24,7 @@ interface MessageBubbleProps {
   showAvatar?: boolean;
   onPress?: () => void;
   onLongPress?: () => void;
+  onRetry?: () => void; // 新增重试回调
 }
 
 export const MessageBubble = React.memo(function MessageBubbleComponent({
@@ -33,6 +34,7 @@ export const MessageBubble = React.memo(function MessageBubbleComponent({
   showAvatar = true,
   onPress,
   onLongPress,
+  onRetry,
 }: MessageBubbleProps) {
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -60,17 +62,25 @@ export const MessageBubble = React.memo(function MessageBubbleComponent({
     }
   };
 
+  const handlePress = () => {
+    if (message.status === 'failed' && isOwn && onRetry) {
+      onRetry();
+    } else if (onPress) {
+      onPress();
+    }
+  };
+
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       onLongPress={onLongPress}
       className={cn(
         "flex-row mb-3 px-4",
         isOwn ? "justify-end" : "justify-start"
       )}
       accessibilityRole="button"
-      accessibilityLabel={`${isOwn ? '我' : senderInfo.displayName}发送的消息: ${message.content}`}
-      accessibilityHint="双击查看消息详情"
+      accessibilityLabel={`${isOwn ? '我' : senderInfo.displayName}发送的消息: ${message.content}${message.status === 'failed' && isOwn ? '，点击重试' : ''}`}
+      accessibilityHint={message.status === 'failed' && isOwn ? "点击重新发送失败的消息" : "双击查看消息详情"}
     >
       {/* 头像(仅对方消息显示) */}
       {!isOwn && (

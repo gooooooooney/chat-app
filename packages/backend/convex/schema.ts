@@ -150,6 +150,23 @@ export default defineSchema({
     deleted: v.optional(v.boolean()),
     // 删除时间
     deletedAt: v.optional(v.number()),
+    
+    // 图片相关字段
+    imageUrl: v.optional(v.string()),      // R2 图片 URL
+    imageKey: v.optional(v.string()),      // R2 存储键
+    imageMetadata: v.optional(v.object({   // 图片元数据
+      width: v.number(),
+      height: v.number(),
+      size: v.number(),
+      mimeType: v.string(),
+    })),
+    
+    // 上传状态
+    uploadStatus: v.optional(v.union(
+      v.literal("uploading"),
+      v.literal("completed"),
+      v.literal("failed")
+    )),
   })
     .index("by_conversation", ["conversationId"])
     .index("by_sender", ["senderId"])

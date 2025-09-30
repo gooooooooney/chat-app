@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
 import { verifyConversationAccess, getUserProfile } from "./helpers/utils";
+import { MessageType } from "../schema";
 
 /**
  * 获取会话中的消息列表（支持分页）
@@ -148,11 +149,7 @@ export const sendMessage = mutation({
     conversationId: v.id("conversations"),
     senderId: v.string(),
     content: v.string(),
-    type: v.optional(v.union(
-      v.literal("text"),
-      v.literal("image"),
-      v.literal("file")
-    )),
+    type: v.optional(MessageType),
     replyToId: v.optional(v.id("messages")),
   },
   handler: async (ctx, args) => {

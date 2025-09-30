@@ -146,6 +146,8 @@ export default function ChatScreen() {
         />
 
         <MessageInput
+          conversationId={conversationId || ''}
+          currentUserId={currentUserId}
           onSendMessage={handleSendMessage}
           disabled={isSending || !currentUserId}
         />

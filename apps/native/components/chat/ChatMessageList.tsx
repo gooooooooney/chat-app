@@ -3,12 +3,13 @@ import { View, FlatList } from 'react-native';
 import { MessageBubble } from './MessageBubble';
 import { Text } from '@/components/ui/text';
 import { Id } from '@chat-app/backend/convex/_generated/dataModel';
+import { MessageType } from '@chat-app/backend/convex/types';
 
 interface Message {
   _id: Id<"messages">;
   content: string;
   senderId: string;
-  type: "text" | "image" | "file" | "system";
+  type: MessageType
   status: "sending" | "sent" | "delivered" | "read" | "failed";
   createdAt: number;
   sender: {

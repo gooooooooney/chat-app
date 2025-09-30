@@ -2,11 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useConvexMutation } from '@convex-dev/react-query';
 import { api } from '@chat-app/backend/convex/_generated/api';
 import { Id } from '@chat-app/backend/convex/_generated/dataModel';
+import { MessageType } from '@chat-app/backend/convex/types';
 
 interface SendMessageParams {
   senderId: string;
   content: string;
-  type?: "text" | "image" | "file";
+  type?: MessageType;
   replyToId?: Id<"messages">;
 }
 
@@ -16,7 +17,7 @@ interface OptimisticMessage {
   conversationId: string;
   senderId: string;
   content: string;
-  type: "text" | "image" | "file";
+  type: MessageType
   replyToId?: Id<"messages">;
   status: "sending" | "sent" | "failed";
   edited: boolean;
@@ -56,7 +57,7 @@ export const useOptimisticSendMessage = (conversationId: string) => {
               hasMore: false,
             };
           }
-          
+
           return {
             ...old,
             messages: [...(old.messages || []), optimisticMessage],
@@ -81,7 +82,7 @@ export const useOptimisticSendMessage = (conversationId: string) => {
           ['conversation-messages', conversationId],
           (old: any) => ({
             ...old,
-            messages: old?.messages?.map((msg: any) => 
+            messages: old?.messages?.map((msg: any) =>
               msg._id === optimisticMessage._id
                 ? { ...msg, status: 'failed' }
                 : msg
@@ -94,7 +95,7 @@ export const useOptimisticSendMessage = (conversationId: string) => {
 
     onError: (error, variables, context) => {
       console.error('发送消息失败:', error);
-      
+
       // 在UI中显示错误状态已经在 mutationFn 中处理了
       // 这里可以添加其他错误处理逻辑，比如显示 toast
     },
@@ -105,7 +106,7 @@ export const useOptimisticSendMessage = (conversationId: string) => {
         ['conversation-messages', conversationId],
         (old: any) => ({
           ...old,
-          messages: old?.messages?.map((msg: any) => 
+          messages: old?.messages?.map((msg: any) =>
             msg._id === data.optimisticId
               ? { ...msg, _id: data.realId, status: 'sent' }
               : msg
@@ -134,7 +135,7 @@ export const useRetryMessage = (conversationId: string) => {
       ['conversation-messages', conversationId],
       (old: any) => ({
         ...old,
-        messages: old?.messages?.filter((msg: any) => 
+        messages: old?.messages?.filter((msg: any) =>
           msg._id !== failedMessage._id
         ),
       })
@@ -170,7 +171,7 @@ export const useOptimisticEditMessage = (conversationId: string) => {
         ['conversation-messages', conversationId],
         (old: any) => ({
           ...old,
-          messages: old?.messages?.map((msg: any) => 
+          messages: old?.messages?.map((msg: any) =>
             msg._id === messageId
               ? { ...msg, content: newContent, edited: true, editedAt: Date.now() }
               : msg
@@ -188,7 +189,7 @@ export const useOptimisticEditMessage = (conversationId: string) => {
 
     onError: (error, variables) => {
       console.error('编辑消息失败:', error);
-      
+
       // 回滚更改
       queryClient.invalidateQueries({
         queryKey: ['conversation-messages', conversationId],
@@ -217,7 +218,7 @@ export const useOptimisticDeleteMessage = (conversationId: string) => {
         ['conversation-messages', conversationId],
         (old: any) => ({
           ...old,
-          messages: old?.messages?.map((msg: any) => 
+          messages: old?.messages?.map((msg: any) =>
             msg._id === messageId
               ? { ...msg, deleted: true, content: '', deletedAt: Date.now() }
               : msg
@@ -259,7 +260,7 @@ export const useOptimisticMarkAsRead = (conversationId: string) => {
         ['conversation-messages', conversationId],
         (old: any) => ({
           ...old,
-          messages: old?.messages?.map((msg: any) => 
+          messages: old?.messages?.map((msg: any) =>
             messageIds.includes(msg._id)
               ? { ...msg, status: 'read' }
               : msg
@@ -277,13 +278,13 @@ export const useOptimisticMarkAsRead = (conversationId: string) => {
 
     onError: (error, { messageIds }) => {
       console.error('标记已读失败:', error);
-      
+
       // 失败时回滚到 delivered 状态
       queryClient.setQueryData(
         ['conversation-messages', conversationId],
         (old: any) => ({
           ...old,
-          messages: old?.messages?.map((msg: any) => 
+          messages: old?.messages?.map((msg: any) =>
             messageIds.includes(msg._id)
               ? { ...msg, status: 'delivered' }
               : msg

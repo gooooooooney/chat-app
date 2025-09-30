@@ -1,29 +1,33 @@
 import React, { useState, useCallback } from 'react';
-import { View, TextInput, KeyboardAvoidingView, Platform, TextInputContentSizeChangeEvent } from 'react-native';
+import { View, TextInput, KeyboardAvoidingView, Platform, TextInputContentSizeChangeEvent, Modal } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { Plus, Send, Mic } from 'lucide-react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { Icon } from '../ui/icon';
+import { ImagePickerModal } from './ImagePicker';
 
 interface MessageInputProps {
+  conversationId: string;
+  currentUserId: string;
   onSendMessage: (content: string) => void;
   disabled?: boolean;
   placeholder?: string;
-  onAttach?: () => void;
   onVoiceRecord?: () => void;
 }
 
 export function MessageInput({
+  conversationId,
+  currentUserId,
   onSendMessage,
   disabled = false,
   placeholder = "输入消息...",
-  onAttach,
   onVoiceRecord,
 }: MessageInputProps) {
   const [message, setMessage] = useState('');
   const [inputHeight, setInputHeight] = useState(40);
+  const [showImagePicker, setShowImagePicker] = useState(false);
 
   const handleSend = useCallback(() => {
     if (message.trim() && !disabled) {
@@ -36,6 +40,10 @@ export function MessageInput({
   const handleContentSizeChange = (event: TextInputContentSizeChangeEvent) => {
     const { height } = event.nativeEvent.contentSize;
     setInputHeight(Math.min(Math.max(height, 40), 120)); // 限制高度 40-120
+  };
+
+  const handleAttach = () => {
+    setShowImagePicker(true);
   };
 
   const canSend = message.trim().length > 0 && !disabled;
@@ -55,7 +63,7 @@ export function MessageInput({
             variant="ghost"
             size="icon"
             className="rounded-full h-10 w-10"
-            onPress={onAttach}
+            onPress={handleAttach}
             disabled={disabled}
           >
             <Plus size={20} className="text-foreground" />
@@ -114,6 +122,22 @@ export function MessageInput({
           )}
         </View>
       </View>
+
+      {/* 图片选择器模态框 */}
+      <Modal
+        visible={showImagePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowImagePicker(false)}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <ImagePickerModal
+            conversationId={conversationId}
+            currentUserId={currentUserId}
+            onClose={() => setShowImagePicker(false)}
+          />
+        </View>
+      </Modal>
     </KeyboardStickyView>
   );
 }

@@ -12,15 +12,19 @@ import type * as auth from "../auth.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
 import type * as privateData from "../privateData.js";
+import type * as r2 from "../r2.js";
 import type * as todos from "../todos.js";
 import type * as types from "../types.js";
 import type * as v1_auth from "../v1/auth.js";
 import type * as v1_chat from "../v1/chat.js";
 import type * as v1_conversations from "../v1/conversations.js";
+import type * as v1_debugR2 from "../v1/debugR2.js";
 import type * as v1_helpers_utils from "../v1/helpers/utils.js";
+import type * as v1_images from "../v1/images.js";
 import type * as v1_messages from "../v1/messages.js";
 import type * as v1_subscriptions from "../v1/subscriptions.js";
 import type * as v1_test from "../v1/test.js";
+import type * as v1_testR2 from "../v1/testR2.js";
 import type * as v1_types_errors from "../v1/types/errors.js";
 import type * as v1_users from "../v1/users.js";
 
@@ -43,15 +47,19 @@ declare const fullApi: ApiFromModules<{
   healthCheck: typeof healthCheck;
   http: typeof http;
   privateData: typeof privateData;
+  r2: typeof r2;
   todos: typeof todos;
   types: typeof types;
   "v1/auth": typeof v1_auth;
   "v1/chat": typeof v1_chat;
   "v1/conversations": typeof v1_conversations;
+  "v1/debugR2": typeof v1_debugR2;
   "v1/helpers/utils": typeof v1_helpers_utils;
+  "v1/images": typeof v1_images;
   "v1/messages": typeof v1_messages;
   "v1/subscriptions": typeof v1_subscriptions;
   "v1/test": typeof v1_test;
+  "v1/testR2": typeof v1_testR2;
   "v1/types/errors": typeof v1_types_errors;
   "v1/users": typeof v1_users;
 }>;
@@ -5333,6 +5341,130 @@ export declare const components: {
               };
         },
         any
+      >;
+    };
+  };
+  r2: {
+    lib: {
+      deleteMetadata: FunctionReference<
+        "mutation",
+        "internal",
+        { bucket: string; key: string },
+        null
+      >;
+      deleteObject: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          secretAccessKey: string;
+        },
+        null
+      >;
+      deleteR2Object: FunctionReference<
+        "action",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          secretAccessKey: string;
+        },
+        null
+      >;
+      getMetadata: FunctionReference<
+        "query",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          secretAccessKey: string;
+        },
+        {
+          bucket: string;
+          bucketLink: string;
+          contentType?: string;
+          key: string;
+          lastModified: string;
+          link: string;
+          sha256?: string;
+          size?: number;
+          url: string;
+        } | null
+      >;
+      listMetadata: FunctionReference<
+        "query",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          cursor?: string;
+          endpoint: string;
+          limit?: number;
+          secretAccessKey: string;
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            bucket: string;
+            bucketLink: string;
+            contentType?: string;
+            key: string;
+            lastModified: string;
+            link: string;
+            sha256?: string;
+            size?: number;
+            url: string;
+          }>;
+          pageStatus?: null | "SplitRecommended" | "SplitRequired";
+          splitCursor?: null | string;
+        }
+      >;
+      store: FunctionReference<
+        "action",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          secretAccessKey: string;
+          url: string;
+        },
+        any
+      >;
+      syncMetadata: FunctionReference<
+        "action",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          onComplete?: string;
+          secretAccessKey: string;
+        },
+        null
+      >;
+      upsertMetadata: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          bucket: string;
+          contentType?: string;
+          key: string;
+          lastModified: string;
+          link: string;
+          sha256?: string;
+          size?: number;
+        },
+        { isNew: boolean }
       >;
     };
   };

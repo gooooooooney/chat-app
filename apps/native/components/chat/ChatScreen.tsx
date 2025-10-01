@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChatHeader } from './ChatHeader';
@@ -6,6 +6,7 @@ import { ChatMessageList } from './ChatMessageList';
 import { MessageInput } from './MessageInput';
 import { LoadingScreen } from './LoadingScreen';
 import { ErrorScreen } from './ErrorScreen';
+import { ImageViewer } from './ImageViewer';
 import { useChat } from '@/hooks/useChat';
 import { useOptimisticSendMessage, useRetryMessage } from '@/hooks/useOptimisticChat';
 import { Id } from '@chat-app/backend/convex/_generated/dataModel';
@@ -18,6 +19,9 @@ export default function ChatScreen() {
   const router = useRouter();
   const currentUser = useQuery(api.auth.getCurrentUser);
   const currentUserId = currentUser?._id || '';
+
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerImageIndex, setViewerImageIndex] = useState(0);
 
   const {
     conversation,
@@ -72,6 +76,16 @@ export default function ChatScreen() {
     }));
   }, [messages]);
 
+  // Extract all image messages for viewer
+  const imageMessages = useMemo(() => {
+    return transformedMessages
+      .filter(msg => msg.type === 'image' && msg.imageUrl && msg.uploadStatus === 'completed')
+      .map(msg => ({
+        _id: msg._id,
+        imageUrl: msg.imageUrl!,
+      }));
+  }, [transformedMessages]);
+
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || !conversationId || !currentUserId) return;
 
@@ -107,6 +121,14 @@ export default function ChatScreen() {
 
   const handleRetry = () => {
     clearError();
+  };
+
+  const handleImagePress = (messageId: string) => {
+    const imageIndex = imageMessages.findIndex(img => img._id === messageId);
+    if (imageIndex !== -1) {
+      setViewerImageIndex(imageIndex);
+      setViewerVisible(true);
+    }
   };
 
   // Loading state
@@ -146,6 +168,7 @@ export default function ChatScreen() {
           currentUserId={currentUserId}
           hasMore={hasMore}
           onRetryMessage={handleRetryMessage}
+          onImagePress={handleImagePress}
         />
 
         <MessageInput
@@ -153,6 +176,13 @@ export default function ChatScreen() {
           currentUserId={currentUserId}
           onSendMessage={handleSendMessage}
           disabled={isSending || !currentUserId}
+        />
+
+        <ImageViewer
+          visible={viewerVisible}
+          images={imageMessages}
+          initialIndex={viewerImageIndex}
+          onClose={() => setViewerVisible(false)}
         />
       </View>
   );

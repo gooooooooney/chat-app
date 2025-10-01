@@ -38,6 +38,7 @@ interface ChatMessageListProps {
   hasMore?: boolean;
   loading?: boolean;
   onRetryMessage?: (messageId: string) => void;
+  onImagePress?: (messageId: string) => void;
 }
 
 export function ChatMessageList({
@@ -47,6 +48,7 @@ export function ChatMessageList({
   hasMore = false,
   loading = false,
   onRetryMessage,
+  onImagePress,
 }: ChatMessageListProps) {
   const listRef = useRef<LegendListRef | null>(null);
 
@@ -71,6 +73,12 @@ export function ChatMessageList({
       }
     };
 
+    const handleImagePress = () => {
+      if (onImagePress && message.imageUrl && message.uploadStatus === 'completed') {
+        onImagePress(message._id);
+      }
+    };
+
     // 根据消息类型渲染不同的组件
     if (message.type === 'image') {
       return (
@@ -88,6 +96,7 @@ export function ChatMessageList({
               localImageUri: message.localImageUri,
             }}
             isOwn={isOwn}
+            onPress={handleImagePress}
             onRetry={handleRetry}
           />
 

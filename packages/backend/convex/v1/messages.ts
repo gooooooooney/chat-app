@@ -112,14 +112,20 @@ export const getConversationMessages = query({
 
           // 如果消息包含图片，生成图片 URL
           let imageUrl: string | undefined;
-          if (message.imageKey) {
-            try {
-              imageUrl = await r2.getUrl(message.imageKey);
-            } catch (error) {
-              console.error(`Failed to get image URL for key ${message.imageKey}:`, error);
+            if (message.imageKey) {
+            // 使用公共 URL 拼接（自定义域名）
+            const publicUrl = process.env.R2_PUBLIC_URL;
+            if (publicUrl) {
+              imageUrl = `${publicUrl}/${message.imageKey}`;
+            } else {
+              // 回退到 R2 presigned URL
+              try {
+                imageUrl = await r2.getUrl(message.imageKey);
+              } catch (error) {
+                console.error(`Failed to get image URL for key ${message.imageKey}:`, error);
+              }
             }
           }
-
           return {
             ...message,
             imageUrl, // 动态生成的图片 URL

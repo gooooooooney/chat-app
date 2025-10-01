@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { View } from 'react-native';
 import { LegendList, LegendListRef, LegendListRenderItemProps } from '@legendapp/list';
 import { MessageBubble } from './MessageBubble';
+import { ImageMessageBubble } from './ImageMessageBubble';
 import { Text } from '@/components/ui/text';
 import { Id } from '@chat-app/backend/convex/_generated/dataModel';
 import { MessageType } from '@chat-app/backend/convex/types';
@@ -10,7 +11,7 @@ interface Message {
   _id: Id<"messages">;
   content: string;
   senderId: string;
-  type: MessageType
+  type: MessageType;
   status: "sending" | "sent" | "delivered" | "read" | "failed";
   createdAt: number;
   sender: {
@@ -18,6 +19,16 @@ interface Message {
     displayName: string;
     avatar?: string;
   };
+  // 图片相关字段
+  imageUrl?: string;
+  imageMetadata?: {
+    width: number;
+    height: number;
+    size: number;
+    mimeType: string;
+  };
+  uploadStatus?: "uploading" | "completed" | "failed";
+  localImageUri?: string; // 本地图片URI（上传中使用）
 }
 
 interface ChatMessageListProps {
@@ -41,6 +52,7 @@ export function ChatMessageList({
 
   // 新消息自动滚动到底部
   useEffect(() => {
+    console.log(JSON.stringify(messages, null, 2))
     if (messages.length > 0) {
       setTimeout(() => {
         listRef.current?.scrollToEnd({ animated: true });
@@ -59,6 +71,33 @@ export function ChatMessageList({
       }
     };
 
+    // 根据消息类型渲染不同的组件
+    if (message.type === 'image') {
+      return (
+        <View key={message._id} className={`flex-row mb-3 px-4 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+          {/* 左侧头像占位（对方消息） */}
+          {!isOwn && <View className="w-8 mr-2" />}
+
+          <ImageMessageBubble
+            message={{
+              _id: message._id,
+              imageUrl: message.imageUrl,
+              imageMetadata: message.imageMetadata,
+              status: message.uploadStatus,
+              createdAt: message.createdAt,
+              localImageUri: message.localImageUri,
+            }}
+            isOwn={isOwn}
+            onRetry={handleRetry}
+          />
+
+          {/* 右侧占位（自己的消息） */}
+          {isOwn && <View className="w-8 ml-2" />}
+        </View>
+      );
+    }
+
+    // 文本消息
     return (
       <MessageBubble
         key={message._id}

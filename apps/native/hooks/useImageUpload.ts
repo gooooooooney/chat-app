@@ -59,6 +59,7 @@ export const useImageUpload = () => {
         uploadStatus: 'uploading' as const,
         imageKey: undefined,
         imageMetadata: width && height ? { width, height, size: size || 0, mimeType } : undefined,
+        localImageUri: imageUri, // 保存本地图片URI
         replyToId,
         edited: false,
         deleted: false,

@@ -15,8 +15,9 @@ interface ImageMessageBubbleProps {
       size: number;
       mimeType: string;
     };
-    status?: "uploading" | "sent" | "failed";
+    status?: "uploading" | "completed" | "failed";
     createdAt: number;
+    localImageUri?: string; // 本地图片URI（上传中使用）
   };
   isOwn: boolean;
   onPress?: () => void;
@@ -74,6 +75,11 @@ export const ImageMessageBubble: React.FC<ImageMessageBubbleProps> = ({
     }
   }
 
+  // 决定显示哪个图片源
+  const imageSource = message.status === 'uploading' && message.localImageUri
+    ? message.localImageUri
+    : message.imageUrl;
+
   return (
     <Pressable
       onPress={handlePress}
@@ -85,9 +91,9 @@ export const ImageMessageBubble: React.FC<ImageMessageBubbleProps> = ({
     >
       {/* 图片容器 */}
       <View className="relative w-full h-full">
-        {message.imageUrl && !imageError ? (
+        {imageSource && !imageError ? (
           <Image
-            source={{ uri: message.imageUrl }}
+            source={{ uri: imageSource }}
             className="w-full h-full"
             resizeMode="cover"
             onLoad={handleImageLoad}
@@ -102,35 +108,47 @@ export const ImageMessageBubble: React.FC<ImageMessageBubbleProps> = ({
           </View>
         )}
 
-        {/* 加载状态覆盖层 */}
-        {(imageLoading || message.status === 'uploading') && (
+        {/* 上传中蒙层 */}
+        {message.status === 'uploading' && (
+          <View className="absolute inset-0 bg-black/40 items-center justify-center">
+            <ActivityIndicator color="white" size="large" />
+            <Text className="text-white text-sm mt-2 font-medium">
+              正在上传中...
+            </Text>
+          </View>
+        )}
+
+        {/* 加载中蒙层（图片下载） */}
+        {imageLoading && message.status !== 'uploading' && (
           <View className="absolute inset-0 bg-black/30 items-center justify-center">
             <ActivityIndicator color="white" size="large" />
-            <Text className="text-white text-sm mt-2">
-              {message.status === 'uploading' ? '上传中...' : '加载中...'}
-            </Text>
           </View>
         )}
 
         {/* 失败状态覆盖层 */}
         {message.status === 'failed' && (
           <View className="absolute inset-0 bg-red-500/20 items-center justify-center">
+            <View className="absolute top-2 left-2 bg-red-500 rounded px-2 py-1">
+              <Text className="text-white text-xs font-medium">失败</Text>
+            </View>
             <Icon as={AlertCircle} size={32} className="text-red-500" />
-            <Text className="text-red-500 text-sm mt-2">
+            <Text className="text-red-500 text-sm mt-2 font-medium">
               上传失败，点击重试
             </Text>
           </View>
         )}
 
         {/* 时间戳 */}
-        <View className="absolute bottom-2 right-2 bg-black/50 rounded px-2 py-1">
-          <Text className="text-white text-xs">
-            {new Date(message.createdAt).toLocaleTimeString('zh-CN', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </Text>
-        </View>
+        {message.status !== 'failed' && (
+          <View className="absolute bottom-2 right-2 bg-black/50 rounded px-2 py-1">
+            <Text className="text-white text-xs">
+              {new Date(message.createdAt).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );

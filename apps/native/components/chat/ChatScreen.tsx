@@ -59,6 +59,11 @@ export default function ChatScreen() {
         ? msg.status
         : 'sent' as any,
       createdAt: msg._creationTime,
+      // 图片相关字段
+      imageUrl: msg.imageUrl,
+      imageMetadata: msg.imageMetadata,
+      uploadStatus: msg.uploadStatus,
+      localImageUri: msg.localImageUri,
       sender: {
         userId: msg.sender?.userId || msg.senderId,
         displayName: msg.sender?.displayName || '未知用户',

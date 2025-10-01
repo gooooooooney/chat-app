@@ -6,9 +6,10 @@ import { useImagePicker } from '@/hooks/useImagePicker';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { Camera, Image as ImageIcon } from 'lucide-react-native';
 import { Icon } from '@/components/ui/icon';
+import { Id } from '@chat-app/backend/convex/_generated/dataModel';
 
 interface ImagePickerProps {
-  conversationId: string;
+  conversationId: Id<"conversations">;
   currentUserId: string;
   onClose?: () => void;
 }

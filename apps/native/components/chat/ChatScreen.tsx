@@ -14,7 +14,7 @@ import { api } from '@chat-app/backend/convex/_generated/api';
 
 
 export default function ChatScreen() {
-  const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
+  const { conversationId } = useLocalSearchParams<{ conversationId: Id<"conversations"> }>();
   const router = useRouter();
   const currentUser = useQuery(api.auth.getCurrentUser);
   const currentUserId = currentUser?._id || '';
@@ -28,7 +28,7 @@ export default function ChatScreen() {
     sendMessage,
     clearError,
   } = useChat({
-    conversationId: conversationId as Id<"conversations">,
+    conversationId,
     userId: currentUserId
   });
 
@@ -144,7 +144,7 @@ export default function ChatScreen() {
         />
 
         <MessageInput
-          conversationId={conversationId || ''}
+          conversationId={conversationId}
           currentUserId={currentUserId}
           onSendMessage={handleSendMessage}
           disabled={isSending || !currentUserId}

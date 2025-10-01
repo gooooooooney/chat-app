@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation } from 'convex/react';
-import { api } from '@chat-app/backend/convex/_generated/api';
 import { Id } from '@chat-app/backend/convex/_generated/dataModel';
+import { api } from '@chat-app/backend/convex/_generated/api';
 
 export interface UseChatProps {
   conversationId: Id<"conversations">;

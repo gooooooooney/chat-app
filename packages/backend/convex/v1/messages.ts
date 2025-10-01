@@ -3,6 +3,10 @@ import { mutation, query } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
 import { verifyConversationAccess, getUserProfile } from "./helpers/utils";
 import { MessageType } from "../schema";
+import { R2 } from "@convex-dev/r2";
+import { components } from "../_generated/api";
+
+const r2 = new R2(components.r2);
 
 /**
  * 获取会话中的消息列表（支持分页）
@@ -106,8 +110,19 @@ export const getConversationMessages = query({
             }
           }
 
+          // 如果消息包含图片，生成图片 URL
+          let imageUrl: string | undefined;
+          if (message.imageKey) {
+            try {
+              imageUrl = await r2.getUrl(message.imageKey);
+            } catch (error) {
+              console.error(`Failed to get image URL for key ${message.imageKey}:`, error);
+            }
+          }
+
           return {
             ...message,
+            imageUrl, // 动态生成的图片 URL
             sender: {
               userId: sender.userId,
               displayName: sender.displayName,
@@ -151,9 +166,31 @@ export const sendMessage = mutation({
     content: v.string(),
     type: v.optional(MessageType),
     replyToId: v.optional(v.id("messages")),
+    // 图片相关字段（type='image'时使用）
+    imageKey: v.optional(v.string()),
+    imageMetadata: v.optional(v.object({
+      width: v.number(),
+      height: v.number(),
+      size: v.number(),
+      mimeType: v.string(),
+    })),
+    uploadStatus: v.optional(v.union(
+      v.literal("uploading"),
+      v.literal("completed"),
+      v.literal("failed")
+    )),
   },
   handler: async (ctx, args) => {
-    const { conversationId, senderId, content, type = "text", replyToId } = args;
+    const {
+      conversationId,
+      senderId,
+      content,
+      type = "text",
+      replyToId,
+      imageKey,
+      imageMetadata,
+      uploadStatus,
+    } = args;
 
     try {
       // 验证用户访问权限
@@ -162,6 +199,11 @@ export const sendMessage = mutation({
       // 内容验证
       if (!content.trim() || content.length > 2000) {
         throw new Error("Invalid message content");
+      }
+
+      // 如果是图片消息，验证imageKey存在
+      if (type === "image" && !imageKey) {
+        throw new Error("Image messages require imageKey");
       }
 
       // 验证回复消息是否存在且属于当前会话
@@ -181,9 +223,26 @@ export const sendMessage = mutation({
         content: content.trim(),
         type,
         replyToId,
+        imageKey,
+        imageMetadata,
+        uploadStatus: uploadStatus || (type === "image" ? "completed" : undefined),
         edited: false,
         deleted: false,
       });
+
+      // 如果有图片，更新 images 表中的记录，关联 messageId
+      if (imageKey) {
+        const image = await ctx.db
+          .query("images")
+          .withIndex("bucket_key", (q) =>
+            q.eq("bucket", r2.config.bucket).eq("key", imageKey)
+          )
+          .first();
+
+        if (image) {
+          await ctx.db.patch(image._id, { messageId });
+        }
+      }
 
       // 更新会话最后消息时间和预览
       const messagePreview = type === "text"

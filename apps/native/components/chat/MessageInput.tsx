@@ -7,9 +7,10 @@ import { Plus, Send, Mic } from 'lucide-react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { Icon } from '../ui/icon';
 import { ImagePickerModal } from './ImagePicker';
+import { Id } from '@chat-app/backend/convex/_generated/dataModel';
 
 interface MessageInputProps {
-  conversationId: string;
+  conversationId: Id<"conversations">;
   currentUserId: string;
   onSendMessage: (content: string) => void;
   disabled?: boolean;

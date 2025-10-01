@@ -4,21 +4,34 @@ import { api } from '@chat-app/backend/convex/_generated/api';
 import { Id } from '@chat-app/backend/convex/_generated/dataModel';
 
 interface UploadImageParams {
-  conversationId: string;
+  conversationId: Id<"conversations">;
   senderId: string;
   imageUri: string;
-  fileName: string;
-  mimeType: string;
-  width: number;
-  height: number;
+  fileName?: string;
+  mimeType?: string;
+  width?: number;
+  height?: number;
   size?: number;
   replyToId?: Id<"messages">;
 }
 
+/**
+ * Hook for uploading images to R2 and creating messages
+ * Following the @convex-dev/r2 pattern:
+ * 1. generateUploadUrl() -> {url, key}
+ * 2. Upload file to presigned URL
+ * 3. syncMetadata() to finalize
+ * 4. Create message with imageKey
+ */
 export const useImageUpload = () => {
   const queryClient = useQueryClient();
-  const generateUploadUrl = useConvexMutation(api.v1.images.generateImageUploadUrl);
-  const completeUpload = useConvexMutation(api.v1.images.completeImageUpload);
+
+  // R2 component API - generates presigned URL and returns key
+  const generateUploadUrl = useConvexMutation(api.r2.generateUploadUrl);
+  const syncMetadata = useConvexMutation(api.r2.syncMetadata);
+
+  // Custom mutation to create message with image
+  const createImageMessage = useConvexMutation(api.v1.messages.sendMessage);
 
   return useMutation({
     mutationFn: async (params: UploadImageParams) => {
@@ -26,11 +39,11 @@ export const useImageUpload = () => {
         conversationId,
         senderId,
         imageUri,
-        fileName,
-        mimeType,
+        fileName = 'image.jpg',
+        mimeType = 'image/jpeg',
         width,
         height,
-        size = 0,
+        size,
         replyToId,
       } = params;
 
@@ -43,15 +56,15 @@ export const useImageUpload = () => {
         senderId,
         content: '[图片]',
         type: 'image' as const,
-        status: 'uploading' as const,
-        imageUrl: imageUri, // 先显示本地图片
-        imageMetadata: { width, height, size, mimeType },
+        uploadStatus: 'uploading' as const,
+        imageKey: undefined,
+        imageMetadata: width && height ? { width, height, size: size || 0, mimeType } : undefined,
         replyToId,
         edited: false,
         deleted: false,
       };
 
-      // 2. 立即更新 UI
+      // 2. 立即更新 UI 显示上传中状态
       queryClient.setQueryData(
         ['conversation-messages', conversationId],
         (old: any) => ({
@@ -61,19 +74,14 @@ export const useImageUpload = () => {
       );
 
       try {
-        // 3. 获取上传 URL
-        const { uploadUrl, fileKey } = await generateUploadUrl({
-          conversationId: conversationId as Id<"conversations">,
-          userId: senderId,
-          fileName,
-          contentType: mimeType,
-        });
+        // 3. 生成 R2 上传 URL（R2 组件自动生成 UUID key）
+        const { url: uploadUrl, key: imageKey } = await generateUploadUrl({});
 
-        // 4. 上传图片到 R2
+        // 4. 上传图片到 R2 presigned URL
         const response = await fetch(imageUri);
         const blob = await response.blob();
 
-        const uploadResponse = await fetch(uploadUrl.url, {
+        const uploadResponse = await fetch(uploadUrl, {
           method: 'PUT',
           body: blob,
           headers: {
@@ -82,28 +90,33 @@ export const useImageUpload = () => {
         });
 
         if (!uploadResponse.ok) {
-          throw new Error('上传到 R2 失败');
+          throw new Error(`上传到 R2 失败: ${uploadResponse.status} ${uploadResponse.statusText}`);
         }
 
-        // 5. 完成上传并创建消息
-        const messageId = await completeUpload({
-          conversationId: conversationId as Id<"conversations">,
+        // 5. 同步元数据到 Convex（触发 onUpload 回调）
+        await syncMetadata({ key: imageKey });
+
+        // 6. 创建包含图片的消息
+        const messageId = await createImageMessage({
+          conversationId,
           senderId,
-          fileKey,
-          metadata: { width, height, size, mimeType },
+          content: '[图片]',
+          type: 'image' as const,
+          imageKey,
+          imageMetadata: width && height ? { width, height, size: size || 0, mimeType } : undefined,
           replyToId,
         });
 
-        return { optimisticId, realMessageId: messageId, fileKey };
+        return { optimisticId, realMessageId: messageId, imageKey };
       } catch (error) {
-        // 6. 失败时标记为失败状态
+        // 7. 失败时标记为失败状态
         queryClient.setQueryData(
           ['conversation-messages', conversationId],
           (old: any) => ({
             ...old,
             messages: old?.messages?.map((msg: any) =>
               msg._id === optimisticId
-                ? { ...msg, status: 'failed' }
+                ? { ...msg, uploadStatus: 'failed' }
                 : msg
             ),
           })
@@ -113,32 +126,36 @@ export const useImageUpload = () => {
     },
 
     onSuccess: (data, variables) => {
-      // 成功后用真实 ID 和云端 URL 替换乐观更新
+      // 成功后移除乐观更新，让实际数据通过 Convex 订阅显示
       queryClient.setQueryData(
         ['conversation-messages', variables.conversationId],
         (old: any) => ({
           ...old,
-          messages: old?.messages?.map((msg: any) =>
-            msg._id === data.optimisticId
-              ? { 
-                  ...msg, 
-                  _id: data.realMessageId, 
-                  status: 'sent',
-                  // imageUrl 会在重新查询时更新为 R2 URL
-                }
-              : msg
-          ),
+          messages: old?.messages?.filter((msg: any) => msg._id !== data.optimisticId),
         })
       );
 
-      // 刷新数据以获取最新的图片 URL
+      // 刷新会话消息列表（Convex 会返回带 imageUrl 的完整数据）
       queryClient.invalidateQueries({
         queryKey: ['conversation-messages', variables.conversationId],
       });
     },
 
-    onError: (error, _variables) => {
+    onError: (error, variables) => {
       console.error('图片上传失败:', error);
+
+      // 可选：一段时间后移除失败的消息
+      setTimeout(() => {
+        queryClient.setQueryData(
+          ['conversation-messages', variables.conversationId],
+          (old: any) => ({
+            ...old,
+            messages: old?.messages?.filter((msg: any) =>
+              msg.uploadStatus !== 'failed'
+            ),
+          })
+        );
+      }, 5000);
     },
   });
 };

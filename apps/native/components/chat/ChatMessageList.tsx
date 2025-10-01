@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
-import { View, FlatList } from 'react-native';
+import { View } from 'react-native';
+import { LegendList, LegendListRef, LegendListRenderItemProps } from '@legendapp/list';
 import { MessageBubble } from './MessageBubble';
 import { Text } from '@/components/ui/text';
 import { Id } from '@chat-app/backend/convex/_generated/dataModel';
@@ -25,7 +26,7 @@ interface ChatMessageListProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loading?: boolean;
-  onRetryMessage?: (messageId: string) => void; // 新增重试回调
+  onRetryMessage?: (messageId: string) => void;
 }
 
 export function ChatMessageList({
@@ -36,18 +37,18 @@ export function ChatMessageList({
   loading = false,
   onRetryMessage,
 }: ChatMessageListProps) {
-  const flatListRef = useRef<FlatList>(null);
+  const listRef = useRef<LegendListRef | null>(null);
 
   // 新消息自动滚动到底部
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
+        listRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
   }, [messages.length]);
 
-  const renderMessage = ({ item: message, index }: { item: Message; index: number }) => {
+  const renderMessage = ({ item: message, index }: LegendListRenderItemProps<Message>) => {
     const isOwn = message.senderId === currentUserId;
     const prevMessage = index > 0 ? messages[index - 1] : null;
     const showAvatar = !isOwn && (!prevMessage || prevMessage.senderId !== message.senderId);
@@ -96,24 +97,19 @@ export function ChatMessageList({
     </View>
   );
 
-  // 优化大量消息的性能 - 如果消息高度固定可以启用
-  // const getItemLayout = (data: any, index: number) => ({
-  //   length: 80, // 估算的消息高度
-  //   offset: 80 * index,
-  //   index,
-  // });
-
   if (messages.length === 0) {
     return renderEmptyState();
   }
 
   return (
     <View className="flex-1">
-      <FlatList
-        ref={flatListRef}
+      <LegendList
+        ref={listRef}
         data={messages}
         renderItem={renderMessage}
         keyExtractor={(item) => item._id}
+        recycleItems={true}
+        maintainVisibleContentPosition
         onEndReached={onLoadMore}
         onEndReachedThreshold={0.1}
         ListHeaderComponent={renderLoadMoreHeader}
@@ -122,20 +118,6 @@ export function ChatMessageList({
           flexGrow: 1,
         }}
         showsVerticalScrollIndicator={false}
-        maintainVisibleContentPosition={{
-          minIndexForVisible: 0,
-          autoscrollToTopThreshold: 10,
-        }}
-        // 性能优化
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        updateCellsBatchingPeriod={50}
-        windowSize={10}
-        initialNumToRender={15}
-        // getItemLayout={getItemLayout} // 如果消息高度固定可以启用
-        // 优化滚动性能
-        disableIntervalMomentum={true}
-        scrollEventThrottle={16}
       />
     </View>
   );

@@ -6,7 +6,6 @@ import {
   Dimensions,
   StatusBar,
   StyleSheet,
-  Image as RNImage,
   ActivityIndicator,
 } from 'react-native';
 import Animated, {
@@ -22,10 +21,13 @@ import {
   GestureDetector,
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
+import { Image } from 'expo-image';
 import { Text } from '@/components/ui/text';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { Icon } from '@/components/ui/icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -78,24 +80,35 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     };
   }, []);
 
-  // Load image size
+  // Prefetch adjacent images
+  useEffect(() => {
+    const indicesToPrefetch = [
+      currentIndex - 1,
+      currentIndex + 1,
+    ].filter(i => i >= 0 && i < images.length);
+
+    const imagesToPrefetch = indicesToPrefetch.map(i => images[i].imageUrl);
+
+    if (imagesToPrefetch.length > 0) {
+      Image.prefetch(imagesToPrefetch, 'memory-disk').catch(error => {
+        console.error('Failed to prefetch images:', error);
+      });
+    }
+  }, [currentIndex, images]);
+
+  // Load current image
   useEffect(() => {
     if (!currentImage) return;
 
     setIsLoading(true);
-    RNImage.getSize(
-      currentImage.imageUrl,
-      (width, height) => {
-        const size = calculateImageSize(width, height);
-        setImageSize(size);
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error('Failed to get image size:', error);
-        setIsLoading(false);
-      }
-    );
-  }, [currentImage, calculateImageSize]);
+    // expo-image will handle the loading automatically
+    // We just set a default size and let the image load
+    setImageSize({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
+
+    // Set loading to false after a short delay
+    const timer = setTimeout(() => setIsLoading(false), 100);
+    return () => clearTimeout(timer);
+  }, [currentImage]);
 
   // Reset all gesture values
   const resetGestureValues = useCallback(() => {
@@ -280,16 +293,21 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
           {/* Image with gestures */}
           <GestureDetector gesture={composedGesture}>
             <Animated.View style={styles.imageWrapper}>
-              <Animated.Image
+              <AnimatedImage
                 source={{ uri: currentImage.imageUrl }}
                 style={[
                   {
-                    width: imageSize.width,
-                    height: imageSize.height,
+                    width: SCREEN_WIDTH,
+                    height: SCREEN_HEIGHT,
                   },
                   animatedStyle,
                 ]}
-                resizeMode="contain"
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                transition={200}
+                onLoadStart={() => setIsLoading(true)}
+                onLoad={() => setIsLoading(false)}
+                onError={() => setIsLoading(false)}
               />
             </Animated.View>
           </GestureDetector>

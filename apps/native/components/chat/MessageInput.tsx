@@ -53,7 +53,7 @@ export function MessageInput({
     <KeyboardStickyView
       style={{
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        // paddingVertical: 12,
         backgroundColor: 'transparent'
       }}
     >

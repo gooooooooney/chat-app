@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Image, Pressable, ActivityIndicator } from 'react-native';
+import { View, Pressable, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { AlertCircle, Download } from 'lucide-react-native';
@@ -94,8 +95,10 @@ export const ImageMessageBubble: React.FC<ImageMessageBubbleProps> = ({
         {imageSource && !imageError ? (
           <Image
             source={{ uri: imageSource }}
-            className="w-full h-full"
-            resizeMode="cover"
+            style={{ width: '100%', height: '100%' }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={200}
             onLoad={handleImageLoad}
             onError={handleImageError}
           />

@@ -152,6 +152,9 @@ importers:
       expo-haptics:
         specifier: ^15.0.7
         version: 15.0.7(expo@54.0.11)
+      expo-image:
+        specifier: ~3.0.8
+        version: 3.0.8(expo@54.0.11)(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
       expo-image-picker:
         specifier: ~17.0.8
         version: 17.0.8(expo@54.0.11)
@@ -4018,6 +4021,17 @@ packages:
     resolution: {integrity: sha512-489ByhVs2XPoAu9zodivAKLv7hG4S/FOe8hO/C2U6jVxmRjpAKakKNjMml0IwWjf1+c/RYBqm1XxKaZ+vq/fDQ==}
     peerDependencies:
       expo: '*'
+
+  expo-image@3.0.8:
+    resolution: {integrity: sha512-L83fTHVjvE5hACxUXPk3dpABteI/IypeqxKMeOAAcT2eB/jbqT53ddsYKEvKAP86eoByQ7+TCtw9AOUizEtaTQ==}
+    peerDependencies:
+      expo: '*'
+      react: '*'
+      react-native: '*'
+      react-native-web: '*'
+    peerDependenciesMeta:
+      react-native-web:
+        optional: true
 
   expo-keep-awake@15.0.7:
     resolution: {integrity: sha512-CgBNcWVPnrIVII5G54QDqoE125l+zmqR4HR8q+MQaCfHet+dYpS5vX5zii/RMayzGN4jPgA4XYIQ28ePKFjHoA==}
@@ -10812,6 +10826,14 @@ snapshots:
     dependencies:
       expo: 54.0.11(@babel/core@7.28.4)(@expo/metro-runtime@6.1.2)(expo-router@6.0.9)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
       expo-image-loader: 6.0.0(expo@54.0.11)
+
+  expo-image@3.0.8(expo@54.0.11)(react-native-web@0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0):
+    dependencies:
+      expo: 54.0.11(@babel/core@7.28.4)(@expo/metro-runtime@6.1.2)(expo-router@6.0.9)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
+      react: 19.1.0
+      react-native: 0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0)
+    optionalDependencies:
+      react-native-web: 0.21.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
 
   expo-keep-awake@15.0.7(expo@54.0.11)(react@19.1.0):
     dependencies:

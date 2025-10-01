@@ -150,28 +150,24 @@ export default defineSchema({
     deleted: v.optional(v.boolean()),
     // 删除时间
     deletedAt: v.optional(v.number()),
-    
-    // 图片相关字段
-    imageUrl: v.optional(v.string()),      // R2 图片 URL
+
+    // 图片相关字段（图片URL通过 r2.getUrl(imageKey) 动态生成）
     imageKey: v.optional(v.string()),      // R2 存储键
-    imageMetadata: v.optional(v.object({   // 图片元数据
+    imageMetadata: v.optional(v.object({   // 图片元数据（缓存用）
       width: v.number(),
       height: v.number(),
       size: v.number(),
       mimeType: v.string(),
     })),
-    
-    // 上传状态
-    uploadStatus: v.optional(v.union(
-      v.literal("uploading"),
-      v.literal("completed"),
-      v.literal("failed")
-    )),
+
+    // 上传状态（用于UI反馈）
+    uploadStatus: v.optional(UploadStatus),
   })
     .index("by_conversation", ["conversationId"])
     .index("by_sender", ["senderId"])
     .index("by_conversation_type", ["conversationId", "type"])
-    .index("by_replyTo", ["replyToId"]),
+    .index("by_replyTo", ["replyToId"])
+    .index("by_imageKey", ["imageKey"]),
 
   // 消息附件表 - 存储消息的附件信息
   messageAttachments: defineTable({
@@ -207,7 +203,7 @@ export default defineSchema({
   messageReadStatus: defineTable({
     // 消息ID
     messageId: v.id("messages"),
-    // 阅读者用户ID  
+    // 阅读者用户ID
     userId: v.string(),
     // 阅读时间
     readAt: v.number(),
@@ -215,6 +211,30 @@ export default defineSchema({
     .index("by_message", ["messageId"])
     .index("by_user", ["userId"])
     .index("by_message_user", ["messageId", "userId"]),
+
+  // 图片存储表 - 跟踪所有上传到 R2 的图片
+  images: defineTable({
+    // R2 bucket 名称
+    bucket: v.string(),
+    // R2 存储键（唯一标识符）
+    key: v.string(),
+    // 上传者用户ID
+    uploadedBy: v.optional(v.string()),
+    // 关联的消息ID（如果图片已用于消息）
+    messageId: v.optional(v.id("messages")),
+    // 图片元数据
+    metadata: v.optional(v.object({
+      width: v.optional(v.number()),
+      height: v.optional(v.number()),
+      size: v.number(),
+      mimeType: v.string(),
+    })),
+    // 可选的标题或说明
+    caption: v.optional(v.string()),
+  })
+    .index("bucket_key", ["bucket", "key"])
+    .index("by_message", ["messageId"])
+    .index("by_uploadedBy", ["uploadedBy"]),
 
   // 好友关系表
   // 设计说明：好友关系是双向的，但我们只存储一条记录避免重复

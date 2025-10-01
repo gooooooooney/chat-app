@@ -42,24 +42,23 @@ const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
 	unsavedChangesWarning: false,
 });
 
+
 const convexQueryClient = new ConvexQueryClient(convex);
 const queryClient = new QueryClient({
 	defaultOptions: {
 		queries: {
 			queryKeyHashFn: convexQueryClient.hashFn(),
 			queryFn: convexQueryClient.queryFn(),
-			gcTime: 1000 * 60 * 60 * 24, // 24小时缓存
-			staleTime: 1000 * 60 * 5,    // 5分钟内数据视为新鲜
-			networkMode: 'offlineFirst',  // 离线优先模式
+			gcTime: 1000 * 60 * 60 * 24, // 24 hours
+			staleTime: 1000 * 60 * 5,    // 5 minutes
+			networkMode: 'offlineFirst',
 		},
 	},
 });
 convexQueryClient.connect(queryClient);
 
-// 创建 AsyncStorage 持久化器
 const persister = createAsyncStoragePersister({
 	storage: AsyncStorage,
-	key: 'chat-app-cache',
 });
 
 export default function RootLayout() {
@@ -85,21 +84,22 @@ export default function RootLayout() {
 	}
 	return (
 		<ConvexBetterAuthProvider client={convex} authClient={authClient}>
-			<PersistQueryClientProvider 
-				client={queryClient} 
-				persistOptions={{ persister }}
-			>
-				<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-					<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
-					<GestureHandlerRootView style={{ flex: 1 }}>
-						<KeyboardProvider>
+			<KeyboardProvider>
+				<PersistQueryClientProvider
+					client={queryClient}
+					persistOptions={{ persister }}
+				>
+					<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+						<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
+						<GestureHandlerRootView style={{ flex: 1 }}>
+
 							<DeepLinkHandler />
 							<Slot />
 							<PortalHost />
-						</KeyboardProvider>
-					</GestureHandlerRootView>
-				</ThemeProvider>
-			</PersistQueryClientProvider>
+						</GestureHandlerRootView>
+					</ThemeProvider>
+				</PersistQueryClientProvider>
+			</KeyboardProvider>
 		</ConvexBetterAuthProvider>
 	);
 }

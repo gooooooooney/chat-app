@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
-import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessageList } from './ChatMessageList';
@@ -127,7 +126,6 @@ export default function ChatScreen() {
 
 
   return (
-    <KeyboardProvider>
       <View className="flex-1 bg-background">
         <ChatHeader
           conversation={{
@@ -152,6 +150,5 @@ export default function ChatScreen() {
           disabled={isSending || !currentUserId}
         />
       </View>
-    </KeyboardProvider>
   );
 }

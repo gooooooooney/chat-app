@@ -50,14 +50,10 @@ export function MessageInput({
   const canSend = message.trim().length > 0 && !disabled;
 
   return (
-    <KeyboardStickyView
-      style={{
-        paddingHorizontal: 16,
-        // paddingVertical: 12,
-        backgroundColor: 'transparent'
-      }}
+    <View
+      className='pb-safe '
     >
-      <View className="flex-row items-end gap-3 bg-background border-t border-border pt-4 pb-2">
+      <View className="flex-row items-end gap-3 bg-background border-t border-border pt-4 ">
         {/* 附件按钮 */}
         <View className="items-center justify-center">
           <Button
@@ -139,6 +135,6 @@ export function MessageInput({
           />
         </View>
       </Modal>
-    </KeyboardStickyView>
+    </View>
   );
 }

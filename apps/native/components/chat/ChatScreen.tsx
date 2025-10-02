@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessageList } from './ChatMessageList';
 import { MessageInput } from './MessageInput';
@@ -163,20 +164,26 @@ export default function ChatScreen() {
           onBack={handleBack}
         />
 
-        <ChatMessageList
-          messages={transformedMessages}
-          currentUserId={currentUserId}
-          hasMore={hasMore}
-          onRetryMessage={handleRetryMessage}
-          onImagePress={handleImagePress}
-        />
+        <KeyboardAvoidingView
+          behavior="padding"
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={0}
+        >
+          <ChatMessageList
+            messages={transformedMessages}
+            currentUserId={currentUserId}
+            hasMore={hasMore}
+            onRetryMessage={handleRetryMessage}
+            onImagePress={handleImagePress}
+          />
 
-        <MessageInput
-          conversationId={conversationId}
-          currentUserId={currentUserId}
-          onSendMessage={handleSendMessage}
-          disabled={isSending || !currentUserId}
-        />
+          <MessageInput
+            conversationId={conversationId}
+            currentUserId={currentUserId}
+            onSendMessage={handleSendMessage}
+            disabled={isSending || !currentUserId}
+          />
+        </KeyboardAvoidingView>
 
         <ImageViewer
           visible={viewerVisible}
